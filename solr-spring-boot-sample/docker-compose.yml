@@ -1,0 +1,11 @@
+services:
+  solr:
+    image: solr:10.0
+    ports:
+      - "8983:8983"
+    command: solr-precreate books
+    volumes:
+      - solr_data:/var/solr
+
+volumes:
+  solr_data:

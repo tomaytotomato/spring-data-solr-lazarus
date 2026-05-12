@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: solr-sample
+  docker:
+    compose:
+      lifecycle-management: start-and-stop
+  solr:
+    host: http://localhost:8983/solr
+    default-collection: books
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    solr:
+      enabled: true
