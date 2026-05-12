@@ -1,0 +1,32 @@
+{
+  "properties": [
+    {
+      "name": "spring.solr.host",
+      "type": "java.lang.String",
+      "description": "Solr server URL. Must end with /solr for Solr 10+.",
+      "defaultValue": "http://localhost:8983/solr"
+    },
+    {
+      "name": "spring.solr.default-collection",
+      "type": "java.lang.String",
+      "description": "Default Solr collection name."
+    },
+    {
+      "name": "spring.solr.zk-host",
+      "type": "java.lang.String",
+      "description": "ZooKeeper connection string for SolrCloud mode. When set, a CloudSolrClient is created instead of HttpJdkSolrClient."
+    },
+    {
+      "name": "spring.solr.connection-timeout",
+      "type": "java.lang.Integer",
+      "description": "Connection timeout in milliseconds.",
+      "defaultValue": 10000
+    },
+    {
+      "name": "spring.solr.request-timeout",
+      "type": "java.lang.Integer",
+      "description": "Request timeout in milliseconds.",
+      "defaultValue": 60000
+    }
+  ]
+}

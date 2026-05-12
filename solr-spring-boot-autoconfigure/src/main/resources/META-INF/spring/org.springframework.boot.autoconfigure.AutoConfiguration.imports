@@ -1,0 +1,2 @@
+dev.solrlazarus.autoconfigure.SolrAutoConfiguration
+dev.solrlazarus.autoconfigure.health.SolrHealthAutoConfiguration
