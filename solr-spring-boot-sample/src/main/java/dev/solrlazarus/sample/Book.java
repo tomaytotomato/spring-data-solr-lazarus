@@ -1,7 +1,9 @@
 package dev.solrlazarus.sample;
 
+import dev.solrlazarus.autoconfigure.mapping.SolrDocument;
 import org.apache.solr.client.solrj.beans.Field;
 
+@SolrDocument(collection = "books")
 public class Book {
 
   @Field
