@@ -45,7 +45,7 @@ public class SolrAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  public SolrTemplate solrTemplate(SolrClient solrClient) {
-    return new SolrTemplate(solrClient);
+  public SolrTemplate solrTemplate(SolrClient solrClient, SolrProperties properties) {
+    return new SolrTemplate(solrClient, properties.getCommitMode());
   }
 }

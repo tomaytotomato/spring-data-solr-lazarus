@@ -11,6 +11,7 @@ public class SolrProperties {
   private String zkHost;
   private Duration connectionTimeout = Duration.ofSeconds(10);
   private Duration requestTimeout = Duration.ofSeconds(60);
+  private CommitMode commitMode = CommitMode.NONE;
 
   public String getHost() {
     return host;
@@ -50,5 +51,13 @@ public class SolrProperties {
 
   public void setRequestTimeout(Duration requestTimeout) {
     this.requestTimeout = requestTimeout;
+  }
+
+  public CommitMode getCommitMode() {
+    return commitMode;
+  }
+
+  public void setCommitMode(CommitMode commitMode) {
+    this.commitMode = commitMode;
   }
 }
