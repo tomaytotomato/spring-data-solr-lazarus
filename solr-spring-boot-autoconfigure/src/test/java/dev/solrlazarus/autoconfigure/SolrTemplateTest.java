@@ -138,18 +138,6 @@ class SolrTemplateTest {
     }
 
     @Test
-    void escapesSpecialCharactersInIdBeforeQuerying() throws Exception {
-      var entity = document("doc:1");
-      var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
-      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
-
-      var result = template.findById(COLLECTION, "doc:1", TestDocument.class);
-
-      assertThat(result).isPresent();
-    }
-
-    @Test
     void wrapsIOExceptionInSolrException() throws Exception {
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class)))
           .thenThrow(new IOException("network error"));
@@ -310,35 +298,6 @@ class SolrTemplateTest {
     @Test
     void returnsTheWrappedSolrClient() {
       assertThat(template.getSolrClient()).isSameAs(solrClient);
-    }
-  }
-
-  @Nested
-  class EscapeQueryChars {
-
-    @Test
-    void escapesColonInId() {
-      assertThat(SolrTemplate.escapeQueryChars("doc:1")).isEqualTo("doc\\:1");
-    }
-
-    @Test
-    void escapesForwardSlashInId() {
-      assertThat(SolrTemplate.escapeQueryChars("path/to")).isEqualTo("path\\/to");
-    }
-
-    @Test
-    void escapesSpaceInId() {
-      assertThat(SolrTemplate.escapeQueryChars("hello world")).isEqualTo("hello\\ world");
-    }
-
-    @Test
-    void plainIdRequiresNoEscaping() {
-      assertThat(SolrTemplate.escapeQueryChars("abc123")).isEqualTo("abc123");
-    }
-
-    @Test
-    void escapesMultipleSpecialCharacters() {
-      assertThat(SolrTemplate.escapeQueryChars("a+b-c")).isEqualTo("a\\+b\\-c");
     }
   }
 }

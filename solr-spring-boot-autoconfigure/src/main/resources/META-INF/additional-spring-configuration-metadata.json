@@ -9,7 +9,7 @@
     {
       "name": "spring.solr.default-collection",
       "type": "java.lang.String",
-      "description": "Default Solr collection name."
+      "description": "Default Solr collection name. Used for health checks and as the default collection for SolrClient."
     },
     {
       "name": "spring.solr.zk-host",
@@ -18,15 +18,15 @@
     },
     {
       "name": "spring.solr.connection-timeout",
-      "type": "java.lang.Integer",
-      "description": "Connection timeout in milliseconds.",
-      "defaultValue": 10000
+      "type": "java.time.Duration",
+      "description": "Connection timeout for the Solr client.",
+      "defaultValue": "10s"
     },
     {
       "name": "spring.solr.request-timeout",
-      "type": "java.lang.Integer",
-      "description": "Request timeout in milliseconds.",
-      "defaultValue": 60000
+      "type": "java.time.Duration",
+      "description": "Request timeout for the Solr client.",
+      "defaultValue": "60s"
     }
   ]
 }

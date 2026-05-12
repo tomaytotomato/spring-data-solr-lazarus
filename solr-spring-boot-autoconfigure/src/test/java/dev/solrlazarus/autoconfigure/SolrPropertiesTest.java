@@ -1,5 +1,6 @@
 package dev.solrlazarus.autoconfigure;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -27,7 +28,7 @@ class SolrPropertiesTest {
     void connectionTimeoutDefaultsToTenSeconds() {
       contextRunner.run(ctx -> {
         var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getConnectionTimeout()).isEqualTo(10_000);
+        assertThat(properties.getConnectionTimeout()).isEqualTo(Duration.ofSeconds(10));
       });
     }
 
@@ -35,7 +36,7 @@ class SolrPropertiesTest {
     void requestTimeoutDefaultsToSixtySeconds() {
       contextRunner.run(ctx -> {
         var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getRequestTimeout()).isEqualTo(60_000);
+        assertThat(properties.getRequestTimeout()).isEqualTo(Duration.ofSeconds(60));
       });
     }
 
@@ -80,22 +81,22 @@ class SolrPropertiesTest {
     }
 
     @Test
-    void customConnectionTimeoutBindsFromProperty() {
+    void durationStyleConnectionTimeoutBindsFromProperty() {
       contextRunner
-          .withPropertyValues("spring.solr.connection-timeout=5000")
+          .withPropertyValues("spring.solr.connection-timeout=5s")
           .run(ctx -> {
             var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getConnectionTimeout()).isEqualTo(5000);
+            assertThat(properties.getConnectionTimeout()).isEqualTo(Duration.ofSeconds(5));
           });
     }
 
     @Test
-    void customRequestTimeoutBindsFromProperty() {
+    void durationStyleRequestTimeoutBindsFromProperty() {
       contextRunner
-          .withPropertyValues("spring.solr.request-timeout=30000")
+          .withPropertyValues("spring.solr.request-timeout=30s")
           .run(ctx -> {
             var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getRequestTimeout()).isEqualTo(30_000);
+            assertThat(properties.getRequestTimeout()).isEqualTo(Duration.ofSeconds(30));
           });
     }
   }

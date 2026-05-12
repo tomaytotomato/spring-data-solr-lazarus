@@ -4,6 +4,9 @@ spring:
   docker:
     compose:
       lifecycle-management: start-and-stop
+      file: solr-spring-boot-sample/docker-compose.yml
+      readiness:
+        wait: always
   solr:
     host: http://localhost:8983/solr
     default-collection: books

@@ -1,5 +1,6 @@
 package dev.solrlazarus.autoconfigure;
 
+import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "spring.solr")
@@ -8,8 +9,8 @@ public class SolrProperties {
   private String host = "http://localhost:8983/solr";
   private String defaultCollection;
   private String zkHost;
-  private int connectionTimeout = 10_000;
-  private int requestTimeout = 60_000;
+  private Duration connectionTimeout = Duration.ofSeconds(10);
+  private Duration requestTimeout = Duration.ofSeconds(60);
 
   public String getHost() {
     return host;
@@ -35,19 +36,19 @@ public class SolrProperties {
     this.zkHost = zkHost;
   }
 
-  public int getConnectionTimeout() {
+  public Duration getConnectionTimeout() {
     return connectionTimeout;
   }
 
-  public void setConnectionTimeout(int connectionTimeout) {
+  public void setConnectionTimeout(Duration connectionTimeout) {
     this.connectionTimeout = connectionTimeout;
   }
 
-  public int getRequestTimeout() {
+  public Duration getRequestTimeout() {
     return requestTimeout;
   }
 
-  public void setRequestTimeout(int requestTimeout) {
+  public void setRequestTimeout(Duration requestTimeout) {
     this.requestTimeout = requestTimeout;
   }
 }

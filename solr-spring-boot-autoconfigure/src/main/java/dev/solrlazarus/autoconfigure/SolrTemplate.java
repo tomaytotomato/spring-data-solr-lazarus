@@ -6,9 +6,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.client.solrj.util.ClientUtils;
 
 public class SolrTemplate implements SolrOperations {
 
@@ -41,7 +42,7 @@ public class SolrTemplate implements SolrOperations {
   @Override
   public <T> Optional<T> findById(String collection, String id, Class<T> type) {
     try {
-      var query = new SolrQuery("id:" + escapeQueryChars(id));
+      var query = new SolrQuery("id:" + ClientUtils.escapeQueryChars(id));
       query.setRows(1);
       var response = solrClient.query(collection, query);
       var beans = response.getBeans(type);
@@ -93,17 +94,5 @@ public class SolrTemplate implements SolrOperations {
   @Override
   public SolrClient getSolrClient() {
     return solrClient;
-  }
-
-  static String escapeQueryChars(String s) {
-    var sb = new StringBuilder();
-    for (int i = 0; i < s.length(); i++) {
-      var c = s.charAt(i);
-      if ("\\+!(){}[]^\"~*?:/- ".indexOf(c) != -1) {
-        sb.append('\\');
-      }
-      sb.append(c);
-    }
-    return sb.toString();
   }
 }
