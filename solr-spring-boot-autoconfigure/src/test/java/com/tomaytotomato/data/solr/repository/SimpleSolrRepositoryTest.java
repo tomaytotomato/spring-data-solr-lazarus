@@ -6,10 +6,12 @@ import com.tomaytotomato.data.solr.query.Criteria;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
 import java.util.List;
 import java.util.Optional;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
@@ -97,6 +99,52 @@ class SimpleSolrRepositoryTest {
       when(solrTemplate.findById("test", "1", TestBook.class)).thenReturn(Optional.empty());
 
       assertThat(repository.existsById("1")).isFalse();
+    }
+  }
+
+  @Nested
+  class FindAllById {
+
+    @Test
+    void returnsEmptyListWhenNoIdsProvided() {
+      var result = repository.findAllById(List.of());
+      assertThat(result).isEmpty();
+    }
+
+    @Test
+    void buildsIdQueryForNormalIds() {
+      when(solrTemplate.query(eq("test"), any(SolrQuery.class), eq(TestBook.class)))
+          .thenReturn(List.of());
+
+      repository.findAllById(List.of("1", "2"));
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("test"), captor.capture(), eq(TestBook.class));
+      assertThat(captor.getValue().getQuery()).isEqualTo("id:(1 OR 2)");
+    }
+
+    @Test
+    void escapesSpecialCharactersInIds() {
+      when(solrTemplate.query(eq("test"), any(SolrQuery.class), eq(TestBook.class)))
+          .thenReturn(List.of());
+
+      repository.findAllById(List.of("book:001", "book(2)"));
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("test"), captor.capture(), eq(TestBook.class));
+      assertThat(captor.getValue().getQuery()).isEqualTo("id:(book\\:001 OR book\\(2\\))");
+    }
+
+    @Test
+    void escapesColonInSingleId() {
+      when(solrTemplate.query(eq("test"), any(SolrQuery.class), eq(TestBook.class)))
+          .thenReturn(List.of());
+
+      repository.findAllById(List.of("ns:123"));
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("test"), captor.capture(), eq(TestBook.class));
+      assertThat(captor.getValue().getQuery()).isEqualTo("id:(ns\\:123)");
     }
   }
 

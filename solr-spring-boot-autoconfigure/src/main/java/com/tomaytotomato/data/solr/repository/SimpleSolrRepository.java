@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.solr.client.solrj.request.SolrQuery;
+import org.apache.solr.client.solrj.util.ClientUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -57,6 +58,7 @@ public class SimpleSolrRepository<T, ID> implements SolrRepository<T, ID> {
   public Iterable<T> findAllById(Iterable<ID> ids) {
     var idList = StreamSupport.stream(ids.spliterator(), false)
         .map(Object::toString)
+        .map(ClientUtils::escapeQueryChars)
         .collect(Collectors.toList());
     if (idList.isEmpty()) {
       return List.of();

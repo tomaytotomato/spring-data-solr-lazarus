@@ -54,6 +54,34 @@ class CriteriaTest {
       var result = Criteria.where("title").contains("spring").toQueryString();
       assertThat(result).isEqualTo("title:*spring*");
     }
+
+    @Test
+    void escapesSpecialCharactersInsideWildcards() {
+      var result = Criteria.where("title").contains("spring(boot").toQueryString();
+      assertThat(result).isEqualTo("title:*spring\\(boot*");
+    }
+
+    @Test
+    void escapesColonInsideWildcards() {
+      var result = Criteria.where("title").contains("field:value").toQueryString();
+      assertThat(result).isEqualTo("title:*field\\:value*");
+    }
+  }
+
+  @Nested
+  class NotContains {
+
+    @Test
+    void wrapsValueInWildcardsNegated() {
+      var result = Criteria.where("title").notContains("spring").toQueryString();
+      assertThat(result).isEqualTo("-title:*spring*");
+    }
+
+    @Test
+    void escapesSpecialCharactersInsideWildcardsNegated() {
+      var result = Criteria.where("title").notContains("spring(boot").toQueryString();
+      assertThat(result).isEqualTo("-title:*spring\\(boot*");
+    }
   }
 
   @Nested
@@ -64,6 +92,18 @@ class CriteriaTest {
       var result = Criteria.where("title").startsWith("Spring").toQueryString();
       assertThat(result).isEqualTo("title:Spring*");
     }
+
+    @Test
+    void escapesSpecialCharactersBeforeTrailingWildcard() {
+      var result = Criteria.where("title").startsWith("Spring(Boot").toQueryString();
+      assertThat(result).isEqualTo("title:Spring\\(Boot*");
+    }
+
+    @Test
+    void escapesColonBeforeTrailingWildcard() {
+      var result = Criteria.where("title").startsWith("field:val").toQueryString();
+      assertThat(result).isEqualTo("title:field\\:val*");
+    }
   }
 
   @Nested
@@ -73,6 +113,18 @@ class CriteriaTest {
     void prependsLeadingWildcard() {
       var result = Criteria.where("title").endsWith("Boot").toQueryString();
       assertThat(result).isEqualTo("title:*Boot");
+    }
+
+    @Test
+    void escapesSpecialCharactersAfterLeadingWildcard() {
+      var result = Criteria.where("title").endsWith("Spring(Boot").toQueryString();
+      assertThat(result).isEqualTo("title:*Spring\\(Boot");
+    }
+
+    @Test
+    void escapesColonAfterLeadingWildcard() {
+      var result = Criteria.where("title").endsWith("field:val").toQueryString();
+      assertThat(result).isEqualTo("title:*field\\:val");
     }
   }
 

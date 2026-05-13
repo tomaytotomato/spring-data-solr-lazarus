@@ -55,6 +55,9 @@ class StringBasedSolrQueryTest {
 
     @Query(value = "author:?0", count = true)
     long countByAuthorCustom(String author);
+
+    @Query("title:?0")
+    List<Product> findByTitleInjection(String title);
   }
 
   private StringBasedSolrQuery createQuery(String methodName, Class<?>... paramTypes) throws Exception {
@@ -178,6 +181,49 @@ class StringBasedSolrQueryTest {
       var result = query.execute(new Object[]{"Nothing"});
 
       assertThat(result).isNull();
+    }
+  }
+
+  @Nested
+  class InjectionPrevention {
+
+    @Test
+    void escapesLuceneSpecialCharactersInParameter() throws Exception {
+      when(solrTemplate.query(eq("products"), any(SolrQuery.class), eq(Product.class)))
+          .thenReturn(List.of());
+
+      var query = createQuery("findByTitleInjection", String.class);
+      query.execute(new Object[]{"spring(boot)"});
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("products"), captor.capture(), eq(Product.class));
+      assertThat(captor.getValue().getQuery()).isEqualTo("title:spring\\(boot\\)");
+    }
+
+    @Test
+    void injectionPayloadDoesNotProduceMatchAllQuery() throws Exception {
+      when(solrTemplate.query(eq("products"), any(SolrQuery.class), eq(Product.class)))
+          .thenReturn(List.of());
+
+      var query = createQuery("findByTitleInjection", String.class);
+      query.execute(new Object[]{"\") OR (*:*"});
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("products"), captor.capture(), eq(Product.class));
+      assertThat(captor.getValue().getQuery()).doesNotContain("*:*");
+    }
+
+    @Test
+    void normalStringParameterWorksCorrectlyAfterEscaping() throws Exception {
+      when(solrTemplate.query(eq("products"), any(SolrQuery.class), eq(Product.class)))
+          .thenReturn(List.of());
+
+      var query = createQuery("findByTitleInjection", String.class);
+      query.execute(new Object[]{"SpringBoot"});
+
+      var captor = ArgumentCaptor.forClass(SolrQuery.class);
+      verify(solrTemplate).query(eq("products"), captor.capture(), eq(Product.class));
+      assertThat(captor.getValue().getQuery()).isEqualTo("title:SpringBoot");
     }
   }
 

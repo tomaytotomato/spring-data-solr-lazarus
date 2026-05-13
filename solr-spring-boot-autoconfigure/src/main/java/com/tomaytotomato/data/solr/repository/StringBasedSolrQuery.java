@@ -3,6 +3,7 @@ package com.tomaytotomato.data.solr.repository;
 import com.tomaytotomato.data.solr.SolrTemplate;
 import com.tomaytotomato.data.solr.mapping.SolrDocumentResolver;
 import org.apache.solr.client.solrj.request.SolrQuery;
+import org.apache.solr.client.solrj.util.ClientUtils;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.query.RepositoryQuery;
 
@@ -44,7 +45,7 @@ public class StringBasedSolrQuery implements RepositoryQuery {
   private String resolveParameters(String query, Object[] parameters) {
     var resolved = query;
     for (int i = 0; i < parameters.length; i++) {
-      resolved = resolved.replace("?" + i, String.valueOf(parameters[i]));
+      resolved = resolved.replace("?" + i, ClientUtils.escapeQueryChars(String.valueOf(parameters[i])));
     }
     return resolved;
   }

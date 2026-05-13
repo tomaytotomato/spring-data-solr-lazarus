@@ -60,25 +60,25 @@ public class Criteria {
 
   /** Matches documents where the field value contains the given substring. */
   public Criteria contains(String value) {
-    predicates.add(new Predicate(WILDCARD + value + WILDCARD, false));
+    predicates.add(new Predicate(WILDCARD + escape(value) + WILDCARD, false));
     return this;
   }
 
   /** Negation of {@link #contains(String)}. */
   public Criteria notContains(String value) {
-    predicates.add(new Predicate(WILDCARD + value + WILDCARD, true));
+    predicates.add(new Predicate(WILDCARD + escape(value) + WILDCARD, true));
     return this;
   }
 
   /** Matches documents where the field value starts with the given prefix. */
   public Criteria startsWith(String value) {
-    predicates.add(new Predicate(value + WILDCARD, false));
+    predicates.add(new Predicate(escape(value) + WILDCARD, false));
     return this;
   }
 
   /** Matches documents where the field value ends with the given suffix. */
   public Criteria endsWith(String value) {
-    predicates.add(new Predicate(WILDCARD + value, false));
+    predicates.add(new Predicate(WILDCARD + escape(value), false));
     return this;
   }
 
