@@ -17,20 +17,27 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Pageable;
 
 public class SolrTemplate implements SolrOperations {
 
   private final SolrClient solrClient;
   private final CommitMode commitMode;
+  private final Environment environment;
 
   public SolrTemplate(SolrClient solrClient) {
-    this(solrClient, CommitMode.NONE);
+    this(solrClient, CommitMode.NONE, null);
   }
 
   public SolrTemplate(SolrClient solrClient, CommitMode commitMode) {
+    this(solrClient, commitMode, null);
+  }
+
+  public SolrTemplate(SolrClient solrClient, CommitMode commitMode, Environment environment) {
     this.solrClient = solrClient;
     this.commitMode = commitMode;
+    this.environment = environment;
   }
 
   @Override
@@ -46,7 +53,7 @@ public class SolrTemplate implements SolrOperations {
 
   @Override
   public <T> T save(T entity) {
-    var collection = SolrDocumentResolver.resolveCollection(entity.getClass());
+    var collection = SolrDocumentResolver.resolveCollection(entity.getClass(), environment);
     return save(collection, entity);
   }
 
@@ -87,7 +94,7 @@ public class SolrTemplate implements SolrOperations {
 
   @Override
   public <T> Optional<T> findById(String id, Class<T> type) {
-    var collection = SolrDocumentResolver.resolveCollection(type);
+    var collection = SolrDocumentResolver.resolveCollection(type, environment);
     return findById(collection, id, type);
   }
 
@@ -122,7 +129,7 @@ public class SolrTemplate implements SolrOperations {
 
   @Override
   public <T> SolrPage<T> queryForPage(SimpleQuery query, Class<T> type, Pageable pageable) {
-    var collection = SolrDocumentResolver.resolveCollection(type);
+    var collection = SolrDocumentResolver.resolveCollection(type, environment);
     return queryForPage(collection, query, type);
   }
 
