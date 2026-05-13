@@ -5,8 +5,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>dev.solrlazarus</groupId>
-    <artifactId>spring-data-solr-lazarus</artifactId>
+    <groupId>com.tomaytotomato</groupId>
+    <artifactId>spring-data-solr</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </parent>
 

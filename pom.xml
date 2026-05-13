@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>dev.solrlazarus</groupId>
-  <artifactId>spring-data-solr-lazarus</artifactId>
+  <groupId>com.tomaytotomato</groupId>
+  <artifactId>spring-data-solr</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
@@ -67,13 +67,13 @@
       </dependency>
 
       <dependency>
-        <groupId>dev.solrlazarus</groupId>
+        <groupId>com.tomaytotomato</groupId>
         <artifactId>solr-spring-boot-autoconfigure</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
-        <groupId>dev.solrlazarus</groupId>
+        <groupId>com.tomaytotomato</groupId>
         <artifactId>solr-spring-boot-starter</artifactId>
         <version>${project.version}</version>
       </dependency>

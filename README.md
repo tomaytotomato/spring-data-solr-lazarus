@@ -110,7 +110,7 @@ Add the starter dependency (once published to Maven Central):
 ```xml
 
 <dependency>
-  <groupId>dev.solrlazarus</groupId>
+  <groupId>com.tomaytotomato</groupId>
   <artifactId>solr-spring-boot-starter</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>

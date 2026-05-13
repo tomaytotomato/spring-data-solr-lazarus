@@ -1,3 +1,3 @@
-dev.solrlazarus.autoconfigure.SolrAutoConfiguration
-dev.solrlazarus.autoconfigure.health.SolrHealthAutoConfiguration
-dev.solrlazarus.autoconfigure.repository.SolrRepositoryAutoConfiguration
+com.tomaytotomato.data.solr.SolrAutoConfiguration
+com.tomaytotomato.data.solr.health.SolrHealthAutoConfiguration
+com.tomaytotomato.data.solr.repository.SolrRepositoryAutoConfiguration
