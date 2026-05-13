@@ -1,10 +1,17 @@
 package com.tomaytotomato.data.solr;
 
+import com.tomaytotomato.data.solr.repository.SolrRepositoryAutoConfiguration;
+import com.tomaytotomato.data.solr.testfixtures.TestSolrDocument;
+import com.tomaytotomato.data.solr.testfixtures.TestSolrDocumentRepository;
 import org.apache.solr.client.solrj.SolrClient;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -13,6 +20,14 @@ class SolrAutoConfigurationTest {
 
   private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
       .withConfiguration(AutoConfigurations.of(SolrAutoConfiguration.class));
+
+  @Configuration
+  static class TestRepositoryConfiguration {
+    @Bean
+    SolrClient solrClient() {
+      return mock(SolrClient.class);
+    }
+  }
 
   @Nested
   class BeanCreation {
@@ -88,6 +103,33 @@ class SolrAutoConfigurationTest {
             assertThat(ctx).hasSingleBean(SolrTemplate.class);
             assertThat(ctx.getBean(SolrTemplate.class)).isSameAs(userTemplate);
           });
+    }
+  }
+
+  @Nested
+  class RepositoryAutoConfiguration {
+
+    private final ApplicationContextRunner repositoryContextRunner = new ApplicationContextRunner()
+        .withConfiguration(AutoConfigurations.of(
+            SolrAutoConfiguration.class,
+            SolrRepositoryAutoConfiguration.class))
+        .withInitializer(ctx -> AutoConfigurationPackages.register(
+            (BeanDefinitionRegistry) ctx.getBeanFactory(),
+            TestSolrDocument.class.getPackageName()))
+        .withUserConfiguration(TestRepositoryConfiguration.class);
+
+    @Test
+    void registersRepositoryBeanInApplicationContext() {
+      repositoryContextRunner.run(ctx ->
+          assertThat(ctx).hasSingleBean(TestSolrDocumentRepository.class));
+    }
+
+    @Test
+    void repositoryBeanIsWiredWithAutoConfiguredTemplate() {
+      repositoryContextRunner.run(ctx -> {
+        assertThat(ctx).hasSingleBean(TestSolrDocumentRepository.class);
+        assertThat(ctx).hasSingleBean(SolrTemplate.class);
+      });
     }
   }
 }
