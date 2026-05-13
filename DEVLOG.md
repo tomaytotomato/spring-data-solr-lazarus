@@ -396,40 +396,144 @@ would dilute the codebase and betray the narrative.
 
 ## What's Next
 
-### Pre-Release: Must Fix (blocking 0.1.0)
+### Pre-Release: Must Fix — DONE
 
-- [ ] **Solr injection in `StringBasedSolrQuery.resolveParameters`** — escape parameters with
-      `ClientUtils.escapeQueryChars()` by default (security critical)
-- [ ] **`SolrEntityInformation.getId()` returns null** — implement `@Field`-based ID reflection,
-      fix `isNew()` — this unblocks `delete(entity)` and `deleteAll(entities)`
-- [ ] **`delete(entity)` / `deleteAll` throw `UnsupportedOperationException`** — implement once
-      `getId()` works (Liskov substitution violation on `CrudRepository`)
-- [ ] **`count(SolrQuery)` mutates caller's object** — defensive copy via `query.getCopy()`
-- [ ] **`findAllById` — escape IDs** with `ClientUtils.escapeQueryChars()` before joining
+- [x] **Solr injection in `StringBasedSolrQuery.resolveParameters`** — escaped with
+      `ClientUtils.escapeQueryChars()` (`2731de1`)
+- [x] **`SolrEntityInformation.getId()` returns null** — `@Field`-based ID reflection implemented
+      (`f330fd8`)
+- [x] **`delete(entity)` / `deleteAll` throw `UnsupportedOperationException`** — implemented via
+      `getId()` (`f330fd8`)
+- [x] **`count(SolrQuery)` mutates caller's object** — defensive copy via `getCopy()` (`bfc945b`)
+- [x] **`findAllById` — escape IDs** with `ClientUtils.escapeQueryChars()` (`2731de1`)
 
-### Pre-Release: Should Fix
+### Pre-Release: Should Fix — DONE
 
-- [ ] **Remove `getSolrClient()` from `SolrOperations` interface** — leaks abstraction, couples
-      callers to SolrJ client hierarchy (Rod Johnson's objection)
-- [ ] **`@SolrDocument` placeholder resolution** — `SolrDocumentResolver` should consult Spring
-      `Environment` to resolve `${property}` expressions in collection names
-- [ ] **`Criteria.contains/startsWith/endsWith` — escape inner value** before wrapping with
-      wildcards (malformed Lucene on special chars)
-- [ ] **`SolrFieldNameResolver` — walk class hierarchy** (`getDeclaredFields()` misses inherited
-      fields, use superclass traversal)
-- [ ] **Add `spring.solr.commit-mode` to `additional-spring-configuration-metadata.json`**
-- [ ] **Repository auto-configuration integration test** — verify `SolrRepository` bean wiring
-      through the full auto-config path
+- [x] **Remove `getSolrClient()` from `SolrOperations` interface** — kept on `SolrTemplate` as
+      concrete method (`bfc945b`)
+- [x] **`@SolrDocument` placeholder resolution** — `SolrDocumentResolver` now accepts `Environment`
+      (`54b3aa9`)
+- [x] **`Criteria.contains/startsWith/endsWith` — escape inner value** before wrapping with
+      wildcards (`2731de1`)
+- [x] **`SolrFieldNameResolver` — walk class hierarchy** with `putIfAbsent` for subclass precedence
+      (`bfc945b`)
+- [x] **Add `spring.solr.commit-mode` to `additional-spring-configuration-metadata.json`**
+      (`bfc945b`)
+- [x] **Repository auto-configuration integration test** — context-level bean wiring verified
+      (`54b3aa9`)
 
-### Post-Release: Enhancements
+### Infrastructure — DONE
 
-- [ ] **Micrometer instrumentation** — `Timer` on `SolrTemplate` operations for observability
-- [ ] **`SolrProperties` constructor binding** — modernise from mutable JavaBean to record or
-      `@ConstructorBinding` (idiomatic Boot 4 / JDK 25)
-- [ ] **`SolrFieldNameResolver.clearCache()`** — package-private method for test hygiene
-- [ ] Cursor-based deep paging integration tests (Testcontainers)
-- [ ] Faceting/highlighting integration tests (Testcontainers)
-- [ ] Custom converter pipeline (MappingSolrConverter)
-- [ ] Geospatial query support (Near, Within)
-- [ ] Streaming expressions
+- [x] **JDK 21 baseline** — compiler target lowered from 25 to 21, no JDK 22+ features in codebase
+      (`6e991a6`)
+- [x] **CI matrix** — GitHub Actions now tests on JDK 21 and 25 (`6e991a6`)
+- [x] **Dependabot** — weekly scans for Maven dependencies and GitHub Actions versions (`cbbfdac`)
+- [x] **README** — SolrCloud/standalone/custom-client configuration documented (`2330300`)
+
+### Session 10: Six Features in Parallel + Coverage Gap Fixes (19:30–20:15)
+
+**Commits:** `19b4416` → `2b22155` (features), then coverage tests on master
+
+Dispatched six worktree agents in parallel to implement the remaining post-release enhancements.
+All six completed, merged into master, and passed a unified build. Then closed JaCoCo coverage
+gaps flagged in the report — `SolrTemplate.savePartialUpdate` (completely untested),
+`CloudSolrClientConfiguration` (0% covered), and missing branch coverage across highlight/facet/
+streaming paths.
+
+**Features delivered (parallel agents):**
+
+- **Micrometer instrumentation** (`19b4416`) — `MicrometerSolrTemplate` extends `SolrTemplate`,
+  wraps 10 operations with `Timer.record()`. Metric name `solr.operations`, tags `operation` +
+  `collection`. Auto-configured via inner `@Configuration` gated on `@ConditionalOnClass` +
+  `@ConditionalOnBean(MeterRegistry.class)`. `micrometer-core` is `<optional>true</optional>`.
+  20 tests.
+
+- **Cursor/facet/highlight integration tests** (`53cceb1`) — 7 new Testcontainers tests in
+  `AbstractSolrIntegrationTest`. Cursor paging: first page, second page different IDs, full
+  traversal. Faceting: field facets with author counts, query facets with year ranges.
+  Highlighting: snippet presence with `<em>` tags, field key verification. Run on both Solr 9
+  and 10.
+
+- **Custom converter pipeline** (`894739c`) — Foundation layer: `SolrReadConverter`,
+  `SolrWriteConverter` functional interfaces, `SolrCustomConversions` immutable registry,
+  `SolrMappingConverter` wrapper. Auto-configured with `@ConditionalOnMissingBean` for user
+  override. Converter *application* during read/write is a deliberate follow-up. 12 tests.
+
+- **Geospatial query support** (`08812d8`) — `GeoPoint` and `GeoDistance` records with unit
+  conversion (km/miles). `Criteria.near()` emits `{!geofilt}`, `Criteria.within()` emits
+  `{!bbox}`. `SolrQueryCreator` handles `NEAR` and `WITHIN` Part.Types. Raw predicates
+  (no `field:` prefix) handled via a `raw` flag on `Predicate`. 13 tests.
+
+- **SolrProperties constructor binding** (`06d3620`) — All fields now `final`, single constructor
+  with `@DefaultValue` annotations. No setters. Boot 4 auto-detects constructor binding from the
+  single-constructor rule. **CloudSolrClient timeout wiring** — `HttpJdkSolrClient.Builder` (which
+  extends `HttpSolrClientBuilderBase`) carries the timeouts, passed via `withHttpClientBuilder()`.
+  Existing SolrProperties tests passed without modification.
+
+- **Streaming expressions** (`8fcd0ea`) — `StreamingExpression` fluent builder with `of(raw)` and
+  `search(collection)` entry points. `SolrTemplate.stream()` posts to `/stream` via
+  `GenericSolrRequest` with `SolrRequestType.STREAMING`. Response parser handles NamedList
+  unwrapping and EOF tuple skipping. 14 tests.
+
+**Merge choreography:** Stashed uncommitted DEVLOG, merged Micrometer (fast-forward), integration
+tests, then converter pipeline (conflict in `SolrAutoConfiguration` — both Micrometer and converter
+added inner configuration classes + imports; resolved by keeping both). Geospatial, SolrProperties,
+and streaming merged cleanly. Six merge commits total.
+
+**Coverage gap fixes (on master after merge):**
+
+- `SavePartialUpdate` — 3 tests: verifies `SolrInputDocument` field mapping (id, set, increment),
+  `IOException` wrapping, `SolrServerException` wrapping
+- `CommitModeImmediate` — 4 new tests: `saveAll`, `savePartialUpdate`, `deleteById`, `deleteByQuery`
+  all commit when IMMEDIATE (previously only `save` was tested)
+- `QueryForPageWithAnnotatedCollection` — verifies `@SolrDocument` collection resolution in the
+  `Pageable` overload
+- `QueryForHighlightPage` null docId branch — verifies empty highlights when Solr document has no
+  `id` field value
+- `Stream` non-List docs — verifies graceful empty result when `docs` is not a `List`
+- `Count` SimpleQuery overload — verifies delegation and error wrapping
+- `CloudSolrClientConditionalConfiguration` — 3 tests: standard client when no `zk-host`, user
+  client precedence when `zk-host` set, context failure when `zk-host` set without real ZK
+
+**Coverage improvement:**
+
+| Class | Before | After |
+|-------|--------|-------|
+| SolrTemplate lines | 92% (13 missed) | 99% (2 missed) |
+| CloudSolrClientConfiguration lines | 0% (10 missed) | 90% (1 missed) |
+
+Remaining misses are catch blocks for exception variants already tested through the `IOException`
+path — same wrapping pattern, diminishing returns.
+
+**Gotchas discovered:**
+- `CloudSolrClient.Builder.build()` eagerly connects to ZooKeeper — cannot unit test actual bean
+  creation without a running cluster. Testcontainers integration tests cover this path. Unit tests
+  verify the conditional property activation and user-bean back-off behaviour.
+- Six parallel worktree agents that modify the same file (`SolrAutoConfiguration`) will always
+  conflict at merge time. Predictable and fast to resolve, but ordering matters — merge the
+  simplest diff first to minimise conflict surface for later merges.
+
+**Tests:** 397 total (363 unit + 34 integration), 0 failures. JaCoCo coverage gate passes.
+
+---
+
+## What's Next
+
+### Post-Release: Enhancements — DONE
+
+- [x] **Micrometer instrumentation** — `MicrometerSolrTemplate` with Timer wrapping (`19b4416`)
+- [x] **`SolrProperties` constructor binding** — final fields, `@DefaultValue`, no setters
+      (`06d3620`)
+- [x] **CloudSolrClient timeout wiring** — via `withHttpClientBuilder()` (`06d3620`)
+- [x] **Cursor/facet/highlight integration tests** — 7 Testcontainers tests (`53cceb1`)
+- [x] **Custom converter pipeline** — foundation layer with auto-configuration (`894739c`)
+- [x] **Geospatial query support** — `GeoPoint`, `GeoDistance`, `near()`, `within()` (`08812d8`)
+- [x] **Streaming expressions** — fluent builder + `SolrTemplate.stream()` (`8fcd0ea`)
+
+### Remaining
+
 - [ ] Publish to Maven Central
+- [ ] Converter application during read/write (follow-up to foundation layer)
+- [ ] `@Highlight` and `@Facet` method-level annotations for repository methods
+- [ ] Geospatial integration tests with Testcontainers (requires spatial field type in schema)
+- [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)

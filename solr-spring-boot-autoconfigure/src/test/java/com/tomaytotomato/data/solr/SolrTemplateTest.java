@@ -128,6 +128,51 @@ class SolrTemplateTest {
   }
 
   @Nested
+  class SavePartialUpdate {
+
+    @Test
+    void delegatesToSolrClientAddWithInputDocument() throws Exception {
+      var update = new PartialUpdate("doc-1")
+          .set("title", "New Title")
+          .increment("views", 1);
+
+      template.savePartialUpdate(COLLECTION, update);
+
+      var captor = org.mockito.ArgumentCaptor.forClass(org.apache.solr.common.SolrInputDocument.class);
+      verify(solrClient).add(eq(COLLECTION), captor.capture());
+      var inputDoc = captor.getValue();
+      assertThat(inputDoc.getFieldValue("id")).isEqualTo("doc-1");
+      assertThat(inputDoc.getFieldValue("title")).isEqualTo(Map.of("set", "New Title"));
+      assertThat(inputDoc.getFieldValue("views")).isEqualTo(Map.of("inc", 1));
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.add(eq(COLLECTION), any(org.apache.solr.common.SolrInputDocument.class)))
+          .thenThrow(new IOException("network error"));
+
+      var update = new PartialUpdate("doc-1").set("title", "New");
+
+      assertThatThrownBy(() -> template.savePartialUpdate(COLLECTION, update))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
+
+    @Test
+    void wrapsSolrServerExceptionInSolrException() throws Exception {
+      when(solrClient.add(eq(COLLECTION), any(org.apache.solr.common.SolrInputDocument.class)))
+          .thenThrow(new SolrServerException("server error"));
+
+      var update = new PartialUpdate("doc-1").set("title", "New");
+
+      assertThatThrownBy(() -> template.savePartialUpdate(COLLECTION, update))
+          .isInstanceOf(SolrException.class)
+          .hasCauseInstanceOf(SolrServerException.class);
+    }
+  }
+
+  @Nested
   class FindById {
 
     @Test
@@ -339,6 +384,33 @@ class SolrTemplateTest {
 
       assertThat(result).isEqualTo(42L);
     }
+
+    @Test
+    void countsViaSimpleQueryByDelegatingToSolrQuery() throws Exception {
+      var docList = new SolrDocumentList();
+      docList.setNumFound(17L);
+      var response = mock(QueryResponse.class);
+      when(response.getResults()).thenReturn(docList);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var simpleQuery = new SimpleQuery(Criteria.where("status").is("active"));
+      var result = template.count(COLLECTION, simpleQuery);
+
+      assertThat(result).isEqualTo(17L);
+    }
+
+    @Test
+    void wrapsIOExceptionFromSimpleQueryCount() throws Exception {
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class)))
+          .thenThrow(new IOException("network error"));
+
+      var simpleQuery = new SimpleQuery(Criteria.where("*").is("*"));
+
+      assertThatThrownBy(() -> template.count(COLLECTION, simpleQuery))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
   }
 
   @Nested
@@ -404,9 +476,15 @@ class SolrTemplateTest {
   @Nested
   class CommitModeImmediate {
 
+    private SolrTemplate immediateTemplate;
+
+    @BeforeEach
+    void setUp() {
+      immediateTemplate = new SolrTemplate(solrClient, CommitMode.IMMEDIATE);
+    }
+
     @Test
     void commitsAfterSaveWhenModeIsImmediate() throws Exception {
-      var immediateTemplate = new SolrTemplate(solrClient, CommitMode.IMMEDIATE);
       var entity = document("1");
 
       immediateTemplate.save(COLLECTION, entity);
@@ -423,6 +501,42 @@ class SolrTemplateTest {
 
       verify(solrClient).addBean(COLLECTION, entity);
       verify(solrClient, never()).commit(COLLECTION);
+    }
+
+    @Test
+    void commitsAfterSaveAllWhenModeIsImmediate() throws Exception {
+      var entities = List.of(document("1"), document("2"));
+
+      immediateTemplate.saveAll(COLLECTION, entities);
+
+      verify(solrClient).addBeans(COLLECTION, entities);
+      verify(solrClient).commit(COLLECTION);
+    }
+
+    @Test
+    void commitsAfterPartialUpdateWhenModeIsImmediate() throws Exception {
+      var update = new PartialUpdate("doc-1").set("title", "Updated");
+
+      immediateTemplate.savePartialUpdate(COLLECTION, update);
+
+      verify(solrClient).add(eq(COLLECTION), any(org.apache.solr.common.SolrInputDocument.class));
+      verify(solrClient).commit(COLLECTION);
+    }
+
+    @Test
+    void commitsAfterDeleteByIdWhenModeIsImmediate() throws Exception {
+      immediateTemplate.deleteById(COLLECTION, "5");
+
+      verify(solrClient).deleteById(COLLECTION, "5");
+      verify(solrClient).commit(COLLECTION);
+    }
+
+    @Test
+    void commitsAfterDeleteByQueryWhenModeIsImmediate() throws Exception {
+      immediateTemplate.deleteByQuery(COLLECTION, "status:inactive");
+
+      verify(solrClient).deleteByQuery(COLLECTION, "status:inactive");
+      verify(solrClient).commit(COLLECTION);
     }
   }
 
@@ -480,6 +594,30 @@ class SolrTemplateTest {
   }
 
   @Nested
+  class QueryForPageWithAnnotatedCollection {
+
+    @Test
+    void resolvesCollectionFromSolrDocumentAnnotation() throws Exception {
+      var entity = new AnnotatedDocument();
+      entity.id = "1";
+      var docList = new SolrDocumentList();
+      docList.setNumFound(1L);
+      docList.setMaxScore(1.5f);
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(AnnotatedDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList);
+      when(solrClient.query(eq("annotated-collection"), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForPage(query, AnnotatedDocument.class, Pageable.ofSize(10));
+
+      assertThat(result.getContent()).containsExactly(entity);
+      verify(solrClient).query(eq("annotated-collection"), any(SolrParams.class));
+    }
+  }
+
+  @Nested
   class QueryForHighlightPage {
 
     @Test
@@ -526,6 +664,29 @@ class SolrTemplateTest {
       when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
       when(response.getResults()).thenReturn(docList);
       when(response.getHighlighting()).thenReturn(null);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForHighlightPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getHighlighted()).hasSize(1);
+      assertThat(result.getHighlighted().get(0).highlights()).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyHighlightsWhenDocumentIdIsNull() throws Exception {
+      var entity = document("3");
+      var solrDoc = new org.apache.solr.common.SolrDocument();
+      var docList = new SolrDocumentList();
+      docList.add(solrDoc);
+      docList.setNumFound(1L);
+
+      var highlights = Map.of("3", Map.of("title", List.of("match")));
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList);
+      when(response.getHighlighting()).thenReturn(highlights);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
       var query = new SimpleQuery(Criteria.where("*").is("*"));
@@ -634,6 +795,22 @@ class SolrTemplateTest {
     @Test
     void returnsEmptyListWhenResultSetIsAbsentFromResponse() throws Exception {
       var responseBody = new NamedList<Object>();
+      when(solrClient.request(any(), eq(COLLECTION))).thenReturn(responseBody);
+
+      var expression = StreamingExpression.of("search(books, q=\"*:*\")");
+      var result = template.stream(COLLECTION, expression);
+
+      assertThat(result).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyListWhenDocsIsNotAList() throws Exception {
+      var resultSet = new NamedList<Object>();
+      resultSet.add("docs", "not-a-list");
+
+      var responseBody = new NamedList<Object>();
+      responseBody.add("result-set", resultSet);
+
       when(solrClient.request(any(), eq(COLLECTION))).thenReturn(responseBody);
 
       var expression = StreamingExpression.of("search(books, q=\"*:*\")");

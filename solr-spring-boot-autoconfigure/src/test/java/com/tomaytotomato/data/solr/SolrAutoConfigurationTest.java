@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -182,6 +183,38 @@ class SolrAutoConfigurationTest {
         var conversions = ctx.getBean(SolrCustomConversions.class);
         assertThat(converter.getConversions()).isSameAs(conversions);
       });
+    }
+  }
+
+  @Nested
+  class CloudSolrClientConditionalConfiguration {
+
+    @Test
+    void usesStandardClientWhenZkHostIsNotSet() {
+      contextRunner.run(ctx -> {
+        assertThat(ctx).hasSingleBean(SolrClient.class);
+        assertThat(ctx.getBean(SolrClient.class))
+            .isNotInstanceOf(CloudSolrClient.class);
+      });
+    }
+
+    @Test
+    void userProvidedClientTakesPrecedenceEvenWhenZkHostIsSet() {
+      var userClient = mock(SolrClient.class);
+      contextRunner
+          .withPropertyValues("spring.solr.zk-host=localhost:2181")
+          .withBean("customSolrClient", SolrClient.class, () -> userClient)
+          .run(ctx -> {
+            assertThat(ctx).hasSingleBean(SolrClient.class);
+            assertThat(ctx.getBean(SolrClient.class)).isSameAs(userClient);
+          });
+    }
+
+    @Test
+    void attemptsCloudClientCreationWhenZkHostIsSet() {
+      contextRunner
+          .withPropertyValues("spring.solr.zk-host=localhost:2181")
+          .run(ctx -> assertThat(ctx).hasFailed());
     }
   }
 
