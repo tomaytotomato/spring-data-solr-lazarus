@@ -334,6 +334,34 @@ After fixes: all sample app endpoints verified end-to-end — `/api/books` retur
 
 **Tests:** 267 total (245 unit + 22 integration), 0 failures.
 
+### Session 8: Package Rename — com.tomaytotomato.data.solr (17:20–17:50)
+
+**Commit:** `a8f8651`
+
+Renamed all Maven coordinates and Java packages to align with the `com.tomaytotomato` domain used
+for published artifacts (e.g. `location4j`). The "Lazarus" branding stays in the repo name and
+README but no longer leaks into import statements or POM coordinates.
+
+**What changed:**
+- groupId: `dev.solrlazarus` → `com.tomaytotomato`
+- Parent artifactId: `spring-data-solr-lazarus` → `spring-data-solr`
+- Java packages: `dev.solrlazarus.autoconfigure` → `com.tomaytotomato.data.solr`
+- Sample app: `dev.solrlazarus.sample` → `com.tomaytotomato.data.solr.sample`
+- Auto-configuration imports file updated to new FQCNs
+- README dependency snippet updated
+
+The package structure mirrors the original `org.springframework.data.solr` — just under our domain.
+Module directory names (`solr-spring-boot-autoconfigure`, etc.) stayed the same since they never
+contained "lazarus".
+
+Also added a symlink at the repo root (`docker-compose.yml → solr-spring-boot-sample/docker-compose.yml`)
+so Docker Compose commands work from either the repo root or the module directory.
+
+71 files touched — all renames plus package declaration / import updates. Verified with `git mv` for
+clean rename tracking in git history.
+
+**Tests:** 267 total (245 unit + 22 integration), 0 failures. BUILD SUCCESS.
+
 ---
 
 ## What's Next
