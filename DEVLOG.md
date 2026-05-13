@@ -145,11 +145,85 @@ the repo.
 
 ---
 
+## 2026-05-13 — Day 2 (continued): Feature Blitz & CI
+
+### Session 4: Full Feature Implementation with Parallel TDD Agents (14:00–14:30)
+
+**Commits:** `e23fdd1` → `e1a9ed7`
+
+Massive feature session — implemented six major features in parallel using Claude Code agents with
+git worktrees and direct-to-tree writes. The approach: research first (old spring-data-solr
+limitations, current dependency versions), then dispatch TDD agents for each feature simultaneously.
+
+**Features delivered:**
+
+- **`@Field` name mapping** (`f021b65`) — `SolrFieldNameResolver` scans `@Field` annotations at
+  class-load time, caches per entity type. `SolrQueryCreator` now resolves field names through it.
+  The #1 pain point from the original spring-data-solr, fixed. 5 new tests.
+
+- **`@Query` annotation** (`2e4cc93`) — `StringBasedSolrQuery` executes raw Solr query strings with
+  `?0`, `?1` parameter substitution. `SolrQueryLookupStrategy` routes `@Query`-annotated methods to
+  it, falls back to `PartTreeSolrQuery`. Added `count` attribute for count queries. Also added
+  `count(String, SolrQuery)` overload to `SolrTemplate` — the `SimpleQuery` variant now delegates to
+  it. 8 new tests.
+
+- **Highlighting** (`8a513f4`) — `HighlightPage<T>`, `HighlightEntry<T>` record, `HighlightOptions`
+  (pre/post tags, snippets, fragsize). `SolrTemplate.queryForHighlightPage()` pairs docs with
+  highlight snippets by document ID. Uses `hl.tag.pre`/`hl.tag.post` (unified highlighter). ~36 new
+  tests.
+
+- **Faceting** (`c222225`) — `FacetPage<T>`, `FacetFieldEntry`/`FacetQueryEntry` records,
+  `FacetOptions` (field facets, query facets, minCount, limit, sort). Parses SolrJ `FacetField` and
+  facet query map from `QueryResponse`. Uses `FacetParams` constants. ~32 new tests.
+
+- **Cursor-based deep paging** (`8c74635`) — `CursorResult<T>` record wrapping Solr's cursorMark.
+  `hasMore` detects exhaustion when `nextCursorMark == requestCursorMark`. Documented the Solr
+  requirement for sort to include uniqueKey field. ~11 new tests.
+
+- **JaCoCo code coverage** (`22e3540`) — `jacoco-maven-plugin` 0.8.13 with 80% LINE coverage
+  threshold on autoconfigure module. Starter and sample modules skip JaCoCo. Added 6 tests to
+  SolrTemplateTest to cover previously untested branches (annotated collection methods, soft commit,
+  commit mode immediate). Coverage at 81.7%.
+
+**Infrastructure:**
+- **GitHub Actions CI** (`272cfd9`) — `.github/workflows/ci.yml` triggers on push/PR to master. JDK
+  25 Temurin, Maven cache, JaCoCo report upload as artifact.
+- **README overhaul** — badges (CI, Java, Spring Boot, SolrJ, License), feature list, quick start
+  guide, usage examples with code snippets.
+- **LIMITATIONS.md** (`e23fdd1`) — comprehensive documentation of the archived spring-data-solr
+  project's bugs, gaps, and what Lazarus improves.
+
+**Sample app enhanced** (`e1a9ed7`) — DataLoader seeds 10 books on startup. BookRepository
+demonstrates derived queries, `@Query` with parameter substitution, count queries. BookController
+showcases CRUD, highlighting, faceting, cursor paging, and statistics endpoints.
+
+**Gotchas discovered:**
+- Parallel agents writing to the same file (SimpleQuery.java) required manual integration — three
+  agents each added their feature (highlight/facet/cursor) but the last writer's version needed the
+  other two features merged in
+- `FacetParams` lives in `org.apache.solr.common.params.FacetParams`, not nested on `SolrQuery`
+- Worktree agents can commit directly to the main branch — the worktree isolation prevents file
+  conflicts but not branch conflicts. Merging worktree branches into master with concurrent
+  direct-to-tree writes required stash/merge/pop choreography
+- `mvn clean` fails on locked surefire-reports directory when agents hold file handles — use
+  `mvn verify` without clean, or wait for agents to complete
+
+**Tests:** 256 total (245 unit + 11 integration), 0 failures. JaCoCo coverage gate passes at >80%.
+
+---
+
 ## What's Next
 
-- [ ] `@Query` annotation — raw Solr query strings on repository methods
-- [ ] `@Field` name mapping in derived queries
-- [ ] Faceting, highlighting, grouping support
-- [ ] Custom converter pipeline (MappingSolrConverter)
+- [x] `@Query` annotation — raw Solr query strings on repository methods
+- [x] `@Field` name mapping in derived queries
+- [x] Faceting, highlighting support
 - [x] README.md with usage documentation
+- [x] GitHub Actions CI pipeline
+- [x] JaCoCo code coverage
+- [x] Document old spring-data-solr limitations
+- [ ] Cursor-based deep paging integration tests (Testcontainers)
+- [ ] Faceting/highlighting integration tests (Testcontainers)
+- [ ] Custom converter pipeline (MappingSolrConverter)
+- [ ] Geospatial query support (Near, Within)
+- [ ] Streaming expressions
 - [ ] Publish to Maven Central

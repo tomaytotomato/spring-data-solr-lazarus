@@ -74,18 +74,38 @@ Method name → PartTree → SolrQueryCreator → SimpleQuery → SolrQuery → 
 ```
 
 `SolrQueryCreator` translates 18 Part.Type keywords (Is, Containing, Between, GreaterThan, In,
-IsNull, True, etc.) into Criteria predicates. `PartTreeSolrQuery` dispatches on return type (List,
+IsNull, True, etc.) into Criteria predicates. `SolrFieldNameResolver` consults `@Field` annotations
+to map Java property names to Solr field names. `PartTreeSolrQuery` dispatches on return type (List,
 Page, single, count, exists).
+
+`@Query` annotation support: methods annotated with `@Query("title:?0 AND author:?1")` bypass
+PartTree and execute raw Solr query strings with positional parameter substitution. Handled by
+`StringBasedSolrQuery` via `SolrQueryLookupStrategy`.
 
 ### Document Mapping
 
 Entity classes use `@SolrDocument(collection = "name")` for collection resolution and SolrJ's
 `@Field` for field binding. `SolrDocumentResolver` derives collection name from the annotation (
-falls back to lowercase class name).
+falls back to lowercase class name). `SolrFieldNameResolver` caches `@Field` annotation mappings
+per entity class.
 
-**Known limitation:** derived queries use Java property names as Solr field names. A property named
-`year` with `@Field("publication_year")` will query `year:` not `publication_year:`. Proper `@Field`
-name mapping in derived queries is not yet implemented.
+### Highlighting
+
+`HighlightPage<T>` extends `PageImpl` with `List<HighlightEntry<T>>`. Configure via
+`HighlightOptions` (pre/post tags, snippets, fragsize, fields). Execute with
+`SolrTemplate.queryForHighlightPage()`.
+
+### Faceting
+
+`FacetPage<T>` extends `PageImpl` with field facets (`Map<String, List<FacetFieldEntry>>`) and
+query facets (`List<FacetQueryEntry>`). Configure via `FacetOptions` (fields, queries, minCount,
+limit, sort). Execute with `SolrTemplate.queryForFacetPage()`.
+
+### Cursor-based Deep Paging
+
+`CursorResult<T>` record wraps Solr's cursorMark mechanism. Set `SimpleQuery.setCursorMark("*")`
+for the initial request, then pass `CursorResult.cursorMark()` for subsequent pages. Sort must
+include the uniqueKey field. Execute with `SolrTemplate.queryWithCursor()`.
 
 ## Key Dependencies
 
