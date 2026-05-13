@@ -24,7 +24,23 @@ LLMs are pretty good at taking up the boring and painful rewriting tasks; as lon
 
 The hypothesis here is that creating a repo and having an LLM custodian will allow it to last longer and still have useful features added and maintained.
 
+# Setup
 
+To build locally
+
+```bash
+mvn clean verify                    # full build + tests (always clean after BOM bumps)
+mvn test                            # unit tests only
+mvn test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module only
+mvn test -pl solr-spring-boot-autoconfigure -Dtest=SolrQueryCreatorTest  # single test class
+mvn test -pl solr-spring-boot-autoconfigure -Dtest="SolrQueryCreatorTest#createsIsQueryForSimpleProperty"  # single test method
+```
+
+To try out the sample app
+
+```bash
+mvn spring-boot:run -pl solr-spring-boot-sample
+```
 
 
 # Links and References

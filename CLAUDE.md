@@ -117,7 +117,21 @@ mvn spring-boot:run -pl solr-spring-boot-sample
 This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book
 CRUD endpoints and Actuator health at `/actuator/health`.
 
+## Claude Code Configuration
+
+The `.claude/` directory contains project-level configuration:
+
+- **`settings.local.json`** — project permissions for Maven, git workflow, GitHub CLI, Docker, and
+  jenv. Not committed (local to each developer). Global settings inherit read-only permissions
+  (find, grep, ls, git status/log/diff/branch) automatically.
+- **`skills/devlog/SKILL.md`** — skill that maintains `DEVLOG.md`. Triggers at the end of work
+  sessions or when asked. Gathers git context, test counts, and writes entries in the established
+  format. Use it — don't update the devlog manually.
+
+Global hooks (git staging guard, Maven delegation, destructive git gate, pre-push build gate, PR
+freshness, gh auth guard) apply automatically from `~/.claude/settings.json`.
+
 ## Dev Log
 
 `DEVLOG.md` tracks dated development sessions with architecture decisions, gotchas discovered, and
-test counts. Update it after significant sessions.
+test counts. Update it after significant sessions — use the `devlog` skill.

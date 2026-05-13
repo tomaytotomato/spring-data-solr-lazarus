@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn *)",
+      "Bash(git fetch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(docker ps*)",
+      "Bash(docker compose *)",
+      "Bash(java -version*)",
+      "Bash(jenv *)"
+    ]
+  }
+}
