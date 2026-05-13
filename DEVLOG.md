@@ -298,6 +298,42 @@ end-to-end boot confirmed.
 
 **Tests:** 267 total (245 unit + 22 integration), 0 failures.
 
+### Session 7: Runtime Fixes — Compiler Flags & Schema Mapping (16:50–17:10)
+
+**Commit:** `faaebcd`
+
+Two more runtime errors surfaced when actually exercising the sample app's REST endpoints — the kind
+of bugs that only appear when the full request path executes, not at startup.
+
+First: `@RequestParam` and `@PathVariable` bindings failed with missing parameter names. Spring
+Framework 7 (used by Boot 4.0.6) no longer infers parameter names from bytecode debug info — it
+requires the `-parameters` compiler flag. Added `<parameters>true</parameters>` to the
+`maven-compiler-plugin` configuration in the parent POM.
+
+Second: Solr's default schemaless ("managed") mode auto-creates bare field names (e.g. `title`,
+`author`) as `multiValued="true"`. When SolrJ deserialises the response, it returns `ArrayList`
+instead of `String`, causing `IllegalArgumentException: Can not set String field to ArrayList`.
+Fixed by switching all `@Field` annotations in the Book entity to Solr's dynamic field suffixes:
+`title_s`, `author_s`, `year_i`, `price_d`, `genre_s`. Updated all `@Query` annotations in
+`BookRepository` and raw field references in `BookController` (highlight, facet queries).
+
+Also removed the explicit `file: docker-compose.yml` property from `application.yml` — Spring Boot's
+Docker Compose auto-detection finds `docker-compose.yml` in the working directory without it.
+
+After fixes: all sample app endpoints verified end-to-end — `/api/books` returns 10 books,
+`/api/books/stats` returns correct counts, `/api/books/search?q=Spring` filters correctly.
+
+**Gotchas discovered:**
+- Spring Framework 7 requires `-parameters` for `@RequestParam`/`@PathVariable` name resolution —
+  without it, parameter names are `arg0`, `arg1` and binding silently fails. This is a Boot 4.x
+  migration gotcha not immediately obvious from compiler output.
+- Solr's default managed schema creates bare field names as `multiValued="true"`. Use dynamic field
+  suffixes (`_s`, `_i`, `_d`, `_l`, `_b`, `_dt`) to get single-valued fields in schemaless mode.
+  Alternatively, define an explicit schema — but dynamic suffixes are the path of least resistance
+  for a starter library sample.
+
+**Tests:** 267 total (245 unit + 22 integration), 0 failures.
+
 ---
 
 ## What's Next
