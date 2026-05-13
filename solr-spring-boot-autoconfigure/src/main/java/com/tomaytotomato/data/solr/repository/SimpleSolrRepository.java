@@ -19,11 +19,14 @@ public class SimpleSolrRepository<T, ID> implements SolrRepository<T, ID> {
   private final SolrTemplate solrTemplate;
   private final Class<T> entityClass;
   private final String collection;
+  private final SolrEntityInformation<T, ID> entityInformation;
 
+  @SuppressWarnings("unchecked")
   public SimpleSolrRepository(SolrTemplate solrTemplate, Class<T> entityClass) {
     this.solrTemplate = solrTemplate;
     this.entityClass = entityClass;
     this.collection = SolrDocumentResolver.resolveCollection(entityClass);
+    this.entityInformation = new SolrEntityInformation<>(entityClass, (Class<ID>) String.class);
   }
 
   @Override
@@ -77,8 +80,10 @@ public class SimpleSolrRepository<T, ID> implements SolrRepository<T, ID> {
 
   @Override
   public void delete(T entity) {
-    throw new UnsupportedOperationException(
-        "delete(entity) requires @Id field reflection — use deleteById instead");
+    var id = entityInformation.getId(entity);
+    if (id != null) {
+      deleteById(id);
+    }
   }
 
   @Override
@@ -88,8 +93,7 @@ public class SimpleSolrRepository<T, ID> implements SolrRepository<T, ID> {
 
   @Override
   public void deleteAll(Iterable<? extends T> entities) {
-    throw new UnsupportedOperationException(
-        "deleteAll(entities) requires @Id field reflection — use deleteAllById instead");
+    entities.forEach(this::delete);
   }
 
   @Override
