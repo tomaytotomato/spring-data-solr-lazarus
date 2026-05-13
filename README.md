@@ -57,14 +57,14 @@ What if we could prevent this from happening by using LLMs to take on the mainte
 gaps in API drift would be managed, old dependencies and security issues would be resolved, and the
 project would stay alive and useful for the community.
 
-The original Spring Data Solr
-was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/)
+The original Spring Data Solr was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/) 
 and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). 
 
-It never supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no
-Spring Data abstraction and no upgrade path.
+The world moved on; Solr got updates, SolrJ was updated and Spring Boot went into version 3. 
 
-Lazarus is a clean reimplementation (not a fork), fixing the original's limitations.
+Lazarus is a clean reimplementation with a baseline in the latest versions of all these libraries. 
+
+This is not a fork of the OG library.
 
 See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
 
@@ -80,9 +80,13 @@ solr-spring-boot-sample         : demo Spring Boot app with Docker Compose suppo
 
 ### Prerequisites
 
-- JDK 21+ (or use [jenv](https://www.jenv.be/) — `.java-version` is included). CI tests on 21 and 25.
+![jean-luc-java.png](jean-luc-java.png)
+
+- JDK 21+ 
 - Docker (for integration tests and the sample app)
 - No Maven installation needed : the project includes the Maven Wrapper
+
+Note: I would recommend jenv for managing your JDK per project https://www.jenv.be/
 
 ### Build
 
