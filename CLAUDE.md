@@ -11,13 +11,21 @@ archived `spring-data-solr` project. Personal project (not giffgaff). Targets JD
 
 ## Build Commands
 
+The project includes the Maven Wrapper — use `./mvnw` (no local Maven install needed).
+
 ```bash
-mvn clean verify                    # full build + tests (always clean after BOM bumps)
-mvn test                            # unit tests only
-mvn test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module only
-mvn test -pl solr-spring-boot-autoconfigure -Dtest=SolrQueryCreatorTest  # single test class
-mvn test -pl solr-spring-boot-autoconfigure -Dtest="SolrQueryCreatorTest#createsIsQueryForSimpleProperty"  # single test method
+./mvnw clean verify                    # full build + tests + JaCoCo (always clean after BOM bumps)
+./mvnw test                            # unit tests only
+./mvnw test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module only
+./mvnw test -pl solr-spring-boot-autoconfigure -Dtest=SolrQueryCreatorTest  # single test class
+./mvnw test -pl solr-spring-boot-autoconfigure -Dtest="SolrQueryCreatorTest#createsIsQueryForSimpleProperty"  # single test method
 ```
+
+JaCoCo enforces **80% line coverage** on the autoconfigure module during `verify`. Never lower this
+threshold.
+
+CI (`ci.yml`) builds only `solr-spring-boot-autoconfigure` and `solr-spring-boot-starter` — the
+sample module is excluded to avoid Docker dependency in GitHub Actions.
 
 Integration tests run against both Solr 9 and Solr 10 via Testcontainers (`Solr9IntegrationTest`,
 `Solr10IntegrationTest`). They require Docker and skip gracefully when Docker is unavailable. The
@@ -26,7 +34,8 @@ Docker image version.
 
 ## Module Structure
 
-Three-module Maven project — the classic Spring Boot starter pattern:
+Three-module Maven project — the classic Spring Boot starter pattern. Package root:
+`com.tomaytotomato.data.solr`.
 
 - **`solr-spring-boot-autoconfigure`** — all the real code: auto-configuration, template, query
   builder, repository abstraction, health indicator, and all tests
@@ -89,7 +98,7 @@ PartTree and execute raw Solr query strings with positional parameter substituti
 Entity classes use `@SolrDocument(collection = "name")` for collection resolution and SolrJ's
 `@Field` for field binding. `SolrDocumentResolver` derives collection name from the annotation (
 falls back to lowercase class name). `SolrFieldNameResolver` caches `@Field` annotation mappings
-per entity class.
+per entity class. `@Score` maps Solr's relevance score to an entity field.
 
 ### Highlighting
 
@@ -128,12 +137,26 @@ include the uniqueKey field. Execute with `SolrTemplate.queryWithCursor()`.
 - `CloudSolrClient` is in core `solr-solrj` (not only in the zookeeper module)
 - Use `ClientUtils.escapeQueryChars` instead of rolling your own
 
+## Configuration Properties
+
+All properties under `spring.solr.*` (see `SolrProperties` and
+`additional-spring-configuration-metadata.json`):
+
+| Property                       | Default                          | Notes                                          |
+|--------------------------------|----------------------------------|-------------------------------------------------|
+| `spring.solr.host`             | `http://localhost:8983/solr`     | Must end with `/solr` for Solr 10+             |
+| `spring.solr.default-collection` | —                              | Used for health checks and as client default   |
+| `spring.solr.zk-host`          | —                                | When set, creates `CloudSolrClient` instead    |
+| `spring.solr.connection-timeout` | `10s`                          | Accepts Duration (e.g. `5s`, `PT10S`)          |
+| `spring.solr.request-timeout`  | `60s`                            | Accepts Duration                               |
+| `spring.solr.commit-mode`      | `NONE`                           | `NONE` or `IMMEDIATE` — controls auto-commit   |
+
 ## Running the Sample App
 
 The sample module uses Spring Boot Docker Compose support. With Docker running:
 
 ```bash
-mvn spring-boot:run -pl solr-spring-boot-sample
+./mvnw spring-boot:run -pl solr-spring-boot-sample
 ```
 
 This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book

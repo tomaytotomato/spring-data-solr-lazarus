@@ -364,15 +364,69 @@ clean rename tracking in git history.
 
 ---
 
+### Session 9: Pre-Release Code Reviews (18:00–18:30)
+
+**No commits — review session only.**
+
+Ran two simulated code reviews before considering public release — one from the perspective of Rod
+Johnson (architectural rigour, Spring Data conventions) and one from Josh Long (developer experience,
+demo-ability, ecosystem citizenship). Both reviewed every production and test source file.
+
+**Key finding:** Both reviewers independently converged on the same top-5 issues — a strong signal
+these are real problems, not stylistic preferences.
+
+Full reviews saved in [`docs/reviews/`](docs/reviews/):
+- [`rod-johnson-review.md`](docs/reviews/rod-johnson-review.md) — architectural review
+- [`josh-long-review.md`](docs/reviews/josh-long-review.md) — developer experience review
+
+**Consensus strengths:**
+- Auto-configuration chain follows Boot conventions precisely
+- Testcontainers dual-version testing pattern is excellent
+- `@Field` name mapping in derived queries (the original's #1 pain point) is solid
+- `CursorResult` record design is correct
+- `SolrFieldNameResolver` thread-safe caching is well done
+
+**On Solr 8 backwards compatibility:** Both said no. The project's premise is "the original died on
+Solr 8; we start at 9." Teams on Solr 8 have the NET-A-PORTER fork. Adding backwards compatibility
+would dilute the codebase and betray the narrative.
+
+**Tests:** 267 total (245 unit + 22 integration), 0 failures. No test changes this session.
+
+---
+
 ## What's Next
 
-- [x] `@Query` annotation — raw Solr query strings on repository methods
-- [x] `@Field` name mapping in derived queries
-- [x] Faceting, highlighting support
-- [x] README.md with usage documentation
-- [x] GitHub Actions CI pipeline
-- [x] JaCoCo code coverage
-- [x] Document old spring-data-solr limitations
+### Pre-Release: Must Fix (blocking 0.1.0)
+
+- [ ] **Solr injection in `StringBasedSolrQuery.resolveParameters`** — escape parameters with
+      `ClientUtils.escapeQueryChars()` by default (security critical)
+- [ ] **`SolrEntityInformation.getId()` returns null** — implement `@Field`-based ID reflection,
+      fix `isNew()` — this unblocks `delete(entity)` and `deleteAll(entities)`
+- [ ] **`delete(entity)` / `deleteAll` throw `UnsupportedOperationException`** — implement once
+      `getId()` works (Liskov substitution violation on `CrudRepository`)
+- [ ] **`count(SolrQuery)` mutates caller's object** — defensive copy via `query.getCopy()`
+- [ ] **`findAllById` — escape IDs** with `ClientUtils.escapeQueryChars()` before joining
+
+### Pre-Release: Should Fix
+
+- [ ] **Remove `getSolrClient()` from `SolrOperations` interface** — leaks abstraction, couples
+      callers to SolrJ client hierarchy (Rod Johnson's objection)
+- [ ] **`@SolrDocument` placeholder resolution** — `SolrDocumentResolver` should consult Spring
+      `Environment` to resolve `${property}` expressions in collection names
+- [ ] **`Criteria.contains/startsWith/endsWith` — escape inner value** before wrapping with
+      wildcards (malformed Lucene on special chars)
+- [ ] **`SolrFieldNameResolver` — walk class hierarchy** (`getDeclaredFields()` misses inherited
+      fields, use superclass traversal)
+- [ ] **Add `spring.solr.commit-mode` to `additional-spring-configuration-metadata.json`**
+- [ ] **Repository auto-configuration integration test** — verify `SolrRepository` bean wiring
+      through the full auto-config path
+
+### Post-Release: Enhancements
+
+- [ ] **Micrometer instrumentation** — `Timer` on `SolrTemplate` operations for observability
+- [ ] **`SolrProperties` constructor binding** — modernise from mutable JavaBean to record or
+      `@ConstructorBinding` (idiomatic Boot 4 / JDK 25)
+- [ ] **`SolrFieldNameResolver.clearCache()`** — package-private method for test hygiene
 - [ ] Cursor-based deep paging integration tests (Testcontainers)
 - [ ] Faceting/highlighting integration tests (Testcontainers)
 - [ ] Custom converter pipeline (MappingSolrConverter)
