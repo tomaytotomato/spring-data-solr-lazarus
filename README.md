@@ -31,3 +31,4 @@ The gaps in API drift would be managed, old dependencies and security issues wou
 - [Original Project](https://github.com/spring-attic/spring-data-solr)
 - [A picture of Josh Long](https://joshlong.com/img/josh-hero-image.2ac6dba0.png)
 - [Spring Boot Starter Template - ericus20 ](https://github.com/ericus20/spring-boot-starter)
+- [Apache SolrJ Reference](https://solr.apache.org/guide/solr/latest/deployment-guide/solrj.html)
