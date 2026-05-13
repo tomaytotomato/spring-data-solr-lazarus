@@ -5,7 +5,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.repository.config.BootstrapMode;
 import org.springframework.data.repository.config.DefaultRepositoryBaseClass;
 
 @Target(ElementType.TYPE)
@@ -17,5 +19,8 @@ public @interface EnableSolrRepositories {
   String[] basePackages() default {};
   Class<?>[] basePackageClasses() default {};
   Class<?> repositoryBaseClass() default DefaultRepositoryBaseClass.class;
+  ComponentScan.Filter[] includeFilters() default {};
+  ComponentScan.Filter[] excludeFilters() default {};
+  BootstrapMode bootstrapMode() default BootstrapMode.DEFAULT;
   String solrTemplateRef() default "solrTemplate";
 }
