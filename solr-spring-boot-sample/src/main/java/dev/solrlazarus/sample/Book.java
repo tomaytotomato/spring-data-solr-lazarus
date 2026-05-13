@@ -9,19 +9,19 @@ public class Book {
   @Field
   private String id;
 
-  @Field
+  @Field("title_s")
   private String title;
 
-  @Field
+  @Field("author_s")
   private String author;
 
-  @Field("publication_year")
+  @Field("year_i")
   private int year;
 
-  @Field
+  @Field("price_d")
   private double price;
 
-  @Field
+  @Field("genre_s")
   private String genre;
 
   public Book() {}

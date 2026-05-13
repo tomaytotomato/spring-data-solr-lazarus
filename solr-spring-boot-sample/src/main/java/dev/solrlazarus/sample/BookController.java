@@ -116,10 +116,10 @@ public class BookController {
 
   @GetMapping("/highlight")
   public HighlightPage<Book> searchWithHighlights(@RequestParam String q) {
-    var query = new SimpleQuery(Criteria.where("title").contains(q));
+    var query = new SimpleQuery(Criteria.where("title_s").contains(q));
     query.setPageable(PageRequest.of(0, 10));
     query.setHighlightOptions(new HighlightOptions()
-        .addField("title")
+        .addField("title_s")
         .preTag("<b>")
         .postTag("</b>")
         .snippets(2)
@@ -132,12 +132,12 @@ public class BookController {
   @GetMapping("/facets")
   public FacetPage<Book> searchWithFacets(
       @RequestParam(defaultValue = "*") String q) {
-    var criteria = q.equals("*") ? Criteria.where("*").expression("*") : Criteria.where("title").contains(q);
+    var criteria = q.equals("*") ? Criteria.where("*").expression("*") : Criteria.where("title_s").contains(q);
     var query = new SimpleQuery(criteria);
     query.setPageable(PageRequest.of(0, 10));
     query.setFacetOptions(new FacetOptions()
-        .addFacetOnField("genre")
-        .addFacetOnField("author")
+        .addFacetOnField("genre_s")
+        .addFacetOnField("author_s")
         .minCount(1)
         .limit(20));
     return solrTemplate.queryForFacetPage("books", query, Book.class);

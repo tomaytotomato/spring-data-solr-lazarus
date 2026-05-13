@@ -24,12 +24,12 @@ public interface BookRepository extends SolrRepository<Book, String> {
 
   boolean existsByTitle(String title);
 
-  @Query("title:?0 AND author:?1")
+  @Query("title_s:?0 AND author_s:?1")
   List<Book> findByTitleAndAuthorCustom(String title, String author);
 
-  @Query("genre:?0 AND price:[?1 TO ?2]")
+  @Query("genre_s:?0 AND price_d:[?1 TO ?2]")
   List<Book> findByGenreAndPriceRange(String genre, double low, double high);
 
-  @Query(value = "genre:?0", count = true)
+  @Query(value = "genre_s:?0", count = true)
   long countByGenreCustom(String genre);
 }

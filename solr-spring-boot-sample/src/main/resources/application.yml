@@ -4,7 +4,6 @@ spring:
   docker:
     compose:
       lifecycle-management: start-and-stop
-      file: docker-compose.yml
       readiness:
         wait: always
   solr:
