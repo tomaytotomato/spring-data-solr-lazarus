@@ -1,10 +1,13 @@
 package com.tomaytotomato.data.solr;
 
+import com.tomaytotomato.data.solr.mapping.SolrCustomConversions;
+import com.tomaytotomato.data.solr.mapping.SolrMappingConverter;
 import com.tomaytotomato.data.solr.repository.SolrRepositoryAutoConfiguration;
 import com.tomaytotomato.data.solr.testfixtures.TestSolrDocument;
 import com.tomaytotomato.data.solr.testfixtures.TestSolrDocumentRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.List;
 import org.apache.solr.client.solrj.SolrClient;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -134,6 +137,50 @@ class SolrAutoConfigurationTest {
       contextRunner.run(ctx -> {
         assertThat(ctx).hasSingleBean(SolrTemplate.class);
         assertThat(ctx.getBean(SolrTemplate.class)).isNotInstanceOf(MicrometerSolrTemplate.class);
+      });
+    }
+  }
+
+  @Nested
+  class ConverterAutoConfiguration {
+
+    @Test
+    void createsSolrCustomConversionsBeanByDefault() {
+      contextRunner.run(ctx ->
+          assertThat(ctx).hasSingleBean(SolrCustomConversions.class));
+    }
+
+    @Test
+    void createsSolrMappingConverterBeanByDefault() {
+      contextRunner.run(ctx ->
+          assertThat(ctx).hasSingleBean(SolrMappingConverter.class));
+    }
+
+    @Test
+    void defaultSolrCustomConversionsIsEmpty() {
+      contextRunner.run(ctx -> {
+        var conversions = ctx.getBean(SolrCustomConversions.class);
+        assertThat(conversions.getConverters()).isEmpty();
+      });
+    }
+
+    @Test
+    void userDefinedSolrCustomConversionsOverridesDefault() {
+      var userConversions = new SolrCustomConversions(List.of(new Object()));
+      contextRunner
+          .withBean("customConversions", SolrCustomConversions.class, () -> userConversions)
+          .run(ctx -> {
+            assertThat(ctx).hasSingleBean(SolrCustomConversions.class);
+            assertThat(ctx.getBean(SolrCustomConversions.class)).isSameAs(userConversions);
+          });
+    }
+
+    @Test
+    void solrMappingConverterIsWiredWithSolrCustomConversions() {
+      contextRunner.run(ctx -> {
+        var converter = ctx.getBean(SolrMappingConverter.class);
+        var conversions = ctx.getBean(SolrCustomConversions.class);
+        assertThat(converter.getConversions()).isSameAs(conversions);
       });
     }
   }
