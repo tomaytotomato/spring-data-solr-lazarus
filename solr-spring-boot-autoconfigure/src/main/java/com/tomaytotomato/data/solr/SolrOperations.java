@@ -1,8 +1,10 @@
 package com.tomaytotomato.data.solr;
 
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import com.tomaytotomato.data.solr.query.StreamingExpression;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.springframework.data.domain.Pageable;
@@ -46,4 +48,6 @@ public interface SolrOperations {
   <T> SolrPage<T> queryForPage(SimpleQuery query, Class<T> type, Pageable pageable);
 
   <T> CursorResult<T> queryWithCursor(String collection, SimpleQuery query, Class<T> type);
+
+  List<Map<String, Object>> stream(String collection, StreamingExpression expression);
 }

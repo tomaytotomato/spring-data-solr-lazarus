@@ -5,18 +5,24 @@ import com.tomaytotomato.data.solr.query.FacetFieldEntry;
 import com.tomaytotomato.data.solr.query.FacetQueryEntry;
 import com.tomaytotomato.data.solr.query.HighlightEntry;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import com.tomaytotomato.data.solr.query.StreamingExpression;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
+import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.util.NamedList;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Pageable;
 
@@ -265,6 +271,47 @@ public class SolrTemplate implements SolrOperations {
     } catch (IOException | SolrServerException e) {
       throw new SolrException("Failed to query with cursor for collection: " + collection, e);
     }
+  }
+
+  @Override
+  public List<Map<String, Object>> stream(String collection, StreamingExpression expression) {
+    try {
+      var params = new ModifiableSolrParams();
+      params.set("expr", expression.getExpression());
+      var request = new GenericSolrRequest(
+          SolrRequest.METHOD.POST, "/stream", SolrRequest.SolrRequestType.STREAMING, params);
+      var response = solrClient.request(request, collection);
+      return parseTuples(response);
+    } catch (IOException | SolrServerException e) {
+      throw new SolrException(
+          "Failed to execute streaming expression on collection: " + collection, e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> parseTuples(NamedList<Object> response) {
+    var resultSet = response.get("result-set");
+    if (!(resultSet instanceof NamedList<?> resultSetList)) {
+      return List.of();
+    }
+    var docs = resultSetList.get("docs");
+    if (!(docs instanceof List<?> docList)) {
+      return List.of();
+    }
+    var tuples = new ArrayList<Map<String, Object>>();
+    for (var doc : docList) {
+      if (doc instanceof NamedList<?> tupleList) {
+        if (tupleList.get("EOF") != null) {
+          continue;
+        }
+        var map = new HashMap<String, Object>();
+        for (var entry : (NamedList<Object>) tupleList) {
+          map.put(entry.getKey(), entry.getValue());
+        }
+        tuples.add(map);
+      }
+    }
+    return tuples;
   }
 
   public SolrClient getSolrClient() {

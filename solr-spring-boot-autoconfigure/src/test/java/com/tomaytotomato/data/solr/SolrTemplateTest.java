@@ -4,7 +4,9 @@ import com.tomaytotomato.data.solr.mapping.SolrDocument;
 import com.tomaytotomato.data.solr.query.Criteria;
 import com.tomaytotomato.data.solr.query.HighlightOptions;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import com.tomaytotomato.data.solr.query.StreamingExpression;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.solr.client.solrj.SolrClient;
@@ -13,6 +15,7 @@ import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.util.NamedList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -543,6 +546,100 @@ class SolrTemplateTest {
           .isInstanceOf(SolrException.class)
           .hasMessageContaining(COLLECTION)
           .hasCauseInstanceOf(IOException.class);
+    }
+  }
+
+  @Nested
+  class Stream {
+
+    @Test
+    void returnsListOfTuplesFromResultSet() throws Exception {
+      var tuple1 = new NamedList<Object>();
+      tuple1.add("id", "1");
+      tuple1.add("title", "Make It So");
+
+      var tuple2 = new NamedList<Object>();
+      tuple2.add("id", "2");
+      tuple2.add("title", "The Final Frontier");
+
+      var eofTuple = new NamedList<Object>();
+      eofTuple.add("EOF", Boolean.TRUE);
+
+      var docs = new ArrayList<>();
+      docs.add(tuple1);
+      docs.add(tuple2);
+      docs.add(eofTuple);
+
+      var resultSet = new NamedList<Object>();
+      resultSet.add("docs", docs);
+
+      var responseBody = new NamedList<Object>();
+      responseBody.add("result-set", resultSet);
+
+      when(solrClient.request(any(), eq(COLLECTION))).thenReturn(responseBody);
+
+      var expression = StreamingExpression.search("books").query("*:*").build();
+      var result = template.stream(COLLECTION, expression);
+
+      assertThat(result).hasSize(2);
+      assertThat(result.get(0)).containsEntry("id", "1").containsEntry("title", "Make It So");
+      assertThat(result.get(1)).containsEntry("id", "2").containsEntry("title", "The Final Frontier");
+    }
+
+    @Test
+    void returnsEmptyListWhenNoTuplesInResultSet() throws Exception {
+      var eofTuple = new NamedList<Object>();
+      eofTuple.add("EOF", Boolean.TRUE);
+
+      var docs = new ArrayList<>();
+      docs.add(eofTuple);
+
+      var resultSet = new NamedList<Object>();
+      resultSet.add("docs", docs);
+
+      var responseBody = new NamedList<Object>();
+      responseBody.add("result-set", resultSet);
+
+      when(solrClient.request(any(), eq(COLLECTION))).thenReturn(responseBody);
+
+      var expression = StreamingExpression.search("books").query("status:none").build();
+      var result = template.stream(COLLECTION, expression);
+
+      assertThat(result).isEmpty();
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.request(any(), eq(COLLECTION))).thenThrow(new IOException("network error"));
+
+      var expression = StreamingExpression.of("search(books, q=\"*:*\")");
+
+      assertThatThrownBy(() -> template.stream(COLLECTION, expression))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
+
+    @Test
+    void wrapsSolrServerExceptionInSolrException() throws Exception {
+      when(solrClient.request(any(), eq(COLLECTION))).thenThrow(new SolrServerException("server error"));
+
+      var expression = StreamingExpression.of("search(books, q=\"*:*\")");
+
+      assertThatThrownBy(() -> template.stream(COLLECTION, expression))
+          .isInstanceOf(SolrException.class)
+          .hasCauseInstanceOf(SolrServerException.class);
+    }
+
+    @Test
+    void returnsEmptyListWhenResultSetIsAbsentFromResponse() throws Exception {
+      var responseBody = new NamedList<Object>();
+      when(solrClient.request(any(), eq(COLLECTION))).thenReturn(responseBody);
+
+      var expression = StreamingExpression.of("search(books, q=\"*:*\")");
+      var result = template.stream(COLLECTION, expression);
+
+      assertThat(result).isEmpty();
     }
   }
 
