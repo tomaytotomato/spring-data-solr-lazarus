@@ -10,32 +10,42 @@
 
 Sometimes you wonder if a project is really dead or is just taking a break in the attic.
 
-Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has been resurrected from the bit void — rebuilt from scratch using Claude Code and a modern stack. Integration-tested against both Solr 9 and Solr 10.
+Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has
+been resurrected from the bit void.
+
+Rebuilt from scratch using Claude code with some analysis and human guidance.
+
+Integration-tested against both Solr 9 and Solr 10.
 
 ## Features
 
-- **Auto-configuration** — drop-in `SolrClient` (standalone or SolrCloud) and `SolrTemplate` beans
-- **Spring Data repositories** — `SolrRepository` with full CRUD, pagination, and sorting
-- **Derived query methods** — 18 keywords (Is, Containing, Between, GreaterThan, In, IsNull, True, etc.)
-- **`@Field` name mapping** — derived queries respect SolrJ `@Field` annotations (the #1 pain point from the original, fixed from day one)
-- **`@Query` annotation** — raw Solr query strings with `?0`, `?1` parameter substitution
-- **Highlighting** — `HighlightPage` with configurable pre/post tags, snippets, and fragment size
-- **Faceting** — `FacetPage` with field facets, query facets, min count, and limit control
-- **Cursor-based deep paging** — `CursorResult` wrapping Solr's cursorMark for efficient deep iteration
-- **Partial updates** — atomic set/add/increment operations via `PartialUpdate`
-- **Health indicator** — Spring Boot Actuator integration, pings collection or falls back to admin info
-- **Criteria API** — fluent query builder: `Criteria.where("title").contains("spring").and("price").greaterThan(10)`
+- **Auto-configuration** : drop-in `SolrClient` (standalone or SolrCloud) and `SolrTemplate` beans
+- **Spring Data repositories** : `SolrRepository` with full CRUD, pagination, and sorting
+- **Derived query methods** : 18 keywords (Is, Containing, Between, GreaterThan, In, IsNull, True,
+  etc.)
+- **`@Field` name mapping** : derived queries respect SolrJ `@Field` annotations (the #1 pain point
+  from the original, fixed from day one)
+- **`@Query` annotation** : raw Solr query strings with `?0`, `?1` parameter substitution
+- **Highlighting** : `HighlightPage` with configurable pre/post tags, snippets, and fragment size
+- **Faceting** : `FacetPage` with field facets, query facets, min count, and limit control
+- **Cursor-based deep paging** : `CursorResult` wrapping Solr's cursorMark for efficient deep
+  iteration
+- **Partial updates** : atomic set/add/increment operations via `PartialUpdate`
+- **Health indicator** : Spring Boot Actuator integration, pings collection or falls back to admin
+  info
+- **Criteria API** : fluent query builder:
+  `Criteria.where("title").contains("spring").and("price").greaterThan(10)`
 
 ## Tech Stack
 
-| Component | Version |
-|-----------|---------|
-| Java | 25 |
-| Spring Boot | 4.0.6 |
-| Spring Framework | 7.0.x |
-| SolrJ | 10.0.0 |
+| Component          | Version   |
+|--------------------|-----------|
+| Java               | 25        |
+| Spring Boot        | 4.0.6     |
+| Spring Framework   | 7.0.x     |
+| SolrJ              | 10.0.0    |
 | Solr compatibility | 9.x, 10.x |
-| Testcontainers | 2.0.5 |
+| Testcontainers     | 2.0.5     |
 
 ## Why?
 
@@ -43,27 +53,34 @@ Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data
 
 Projects often go stale or die because of burnout, lack of time/resources or changing priorities.
 
-What if we could prevent this from happening by using LLMs to take on the maintenance burden? The gaps in API drift would be managed, old dependencies and security issues would be resolved, and the project would stay alive and useful for the community.
+What if we could prevent this from happening by using LLMs to take on the maintenance burden? The
+gaps in API drift would be managed, old dependencies and security issues would be resolved, and the
+project would stay alive and useful for the community.
 
-The original Spring Data Solr was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/) and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). It never supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no Spring Data abstraction and no upgrade path.
+The original Spring Data Solr
+was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/)
+and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). It never
+supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no
+Spring Data abstraction and no upgrade path.
 
-Lazarus is a clean reimplementation — not a fork — fixing the original's design flaws and targeting the current stack. See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
+Lazarus is a clean reimplementation : not a fork : fixing the original's design flaws and targeting
+the current stack. See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
 
 ## Module Structure
 
 ```
-solr-spring-boot-autoconfigure  — all the real code: auto-configuration, template, queries, repos
-solr-spring-boot-starter        — thin POM that consumers depend on
-solr-spring-boot-sample         — demo Spring Boot app with Docker Compose support
+solr-spring-boot-autoconfigure  : all the real code: auto-configuration, template, queries, repos
+solr-spring-boot-starter        : thin POM that consumers depend on
+solr-spring-boot-sample         : demo Spring Boot app with Docker Compose support
 ```
 
 ## Quick Start
 
 ### Prerequisites
 
-- JDK 25+ (or use [jenv](https://www.jenv.be/) — `.java-version` is included)
+- JDK 25+ (or use [jenv](https://www.jenv.be/) `.java-version` is included)
 - Docker (for integration tests and the sample app)
-- No Maven installation needed — the project includes the Maven Wrapper
+- No Maven installation needed : the project includes the Maven Wrapper
 
 ### Build
 
@@ -81,13 +98,15 @@ With Docker running:
 ./mvnw spring-boot:run -pl solr-spring-boot-sample
 ```
 
-This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book CRUD endpoints and Actuator health at `/actuator/health`.
+This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book
+CRUD endpoints and Actuator health at `/actuator/health`.
 
 ### Use in Your Project
 
 Add the starter dependency (once published to Maven Central):
 
 ```xml
+
 <dependency>
   <groupId>dev.solrlazarus</groupId>
   <artifactId>solr-spring-boot-starter</artifactId>
@@ -107,18 +126,26 @@ spring:
 Define a repository:
 
 ```java
+
 @SolrDocument(collection = "books")
 public class Book {
-  @Field String id;
-  @Field String title;
-  @Field String author;
+
+  @Field
+  String id;
+  @Field
+  String title;
+  @Field
+  String author;
 }
 
 public interface BookRepository extends SolrRepository<Book, String> {
+
   List<Book> findByAuthor(String author);
+
   List<Book> findByTitleContaining(String keyword);
+
   long countByAuthor(String author);
-  
+
   @Query("title:?0 AND author:?1")
   List<Book> findByTitleAndAuthorCustom(String title, String author);
 }
