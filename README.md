@@ -59,12 +59,14 @@ project would stay alive and useful for the community.
 
 The original Spring Data Solr
 was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/)
-and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). It never
-supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no
+and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). 
+
+It never supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no
 Spring Data abstraction and no upgrade path.
 
-Lazarus is a clean reimplementation : not a fork : fixing the original's design flaws and targeting
-the current stack. See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
+Lazarus is a clean reimplementation (not a fork), fixing the original's limitations.
+
+See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
 
 ## Module Structure
 
