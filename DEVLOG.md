@@ -260,11 +260,38 @@ Fixed a startup-crashing bug in the sample app: `@EnableSolrRepositories` was mi
 and throws `IllegalArgumentException` when they're absent. This was a latent bug — the unit and
 integration tests never exercised the full auto-configuration boot path that the sample app triggers.
 
+Deeper than initially expected — after fixing `includeFilters`/`excludeFilters`, two more startup
+failures surfaced in sequence:
+
+- `NoClassDefFoundError: InvalidDataAccessApiUsageException` — `spring-tx` is declared `<optional>true`
+  in `spring-data-commons` 4.0.5, so it doesn't flow transitively. Added it explicitly to the starter
+  POM.
+- `NullPointerException: solrTemplate is null` in `SimpleSolrRepository.deleteAll()` —
+  `SolrRepositoryConfigurationExtension` was missing a `postProcess()` override to wire `solrTemplate`
+  into the `SolrRepositoryFactoryBean` via `addPropertyReference`. Without this, Spring Data creates the
+  factory bean but never injects the template. Added both the generic `RepositoryConfigurationSource` and
+  the `AnnotationRepositoryConfigurationSource` overloads (the latter reads `solrTemplateRef` from the
+  annotation attributes).
+
+The full `@EnableSolrRepositories` annotation now declares all attributes that
+`AnnotationRepositoryConfigurationSource` reads: `repositoryFactoryBeanClass`, `queryLookupStrategy`,
+`namedQueriesLocation`, `repositoryImplementationPostfix`, and `considerNestedRepositories` — in
+addition to the earlier `includeFilters`, `excludeFilters`, and `bootstrapMode`. Attribute names were
+extracted by decompiling `AnnotationRepositoryConfigurationSource` bytecode and scanning for `ldc`
+string constants. The `fragmentsContributor` attribute is guarded by `containsKey` and can be omitted.
+
+After all fixes: `Started SampleApplication in 2.8s`, `Loaded 10 sample books into Solr`. Full
+end-to-end boot confirmed.
+
 **Gotchas discovered:**
-- Spring Data Commons 4.0.5 requires `@Enable*Repositories` annotations to declare `includeFilters`,
-  `excludeFilters`, and `bootstrapMode` attributes. The old spring-data-solr didn't need these because
-  Spring Data Commons 3.x didn't read them in the same code path. This is undocumented in the Spring
-  Data 4.0 migration guide.
+- Spring Data Commons 4.0.5 `AnnotationRepositoryConfigurationSource` reads 12+ attributes from the
+  enable annotation via `getRequiredAttribute` — any missing attribute causes `IllegalArgumentException`
+  at startup. The old spring-data-solr didn't need these because Spring Data Commons 3.x didn't read
+  them in the same code path. This is undocumented in the Spring Data 4.0 migration guide.
+- `spring-tx` is `<optional>true` in `spring-data-commons` — starters must pull it in explicitly.
+- `RepositoryConfigurationExtensionSupport.postProcess()` is the wiring point for custom template
+  references. Without it, the factory bean creates repositories with null collaborators. Unit tests
+  don't catch this because they construct `SimpleSolrRepository` directly with constructor injection.
 - Running `mvn spring-boot:run -pl solr-spring-boot-sample` from the repo root causes a Docker Compose
   file lookup failure because the working directory is the repo root, not the module directory. The
   Docker Compose support resolves paths relative to `user.dir`.
