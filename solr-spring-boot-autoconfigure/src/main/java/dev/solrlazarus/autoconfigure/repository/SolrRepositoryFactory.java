@@ -1,10 +1,13 @@
 package dev.solrlazarus.autoconfigure.repository;
 
 import dev.solrlazarus.autoconfigure.SolrTemplate;
+import java.util.Optional;
 import org.springframework.data.repository.core.EntityInformation;
 import org.springframework.data.repository.core.RepositoryInformation;
 import org.springframework.data.repository.core.RepositoryMetadata;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;
+import org.springframework.data.repository.query.QueryLookupStrategy;
+import org.springframework.data.repository.query.QueryLookupStrategy.Key;
 
 public class SolrRepositoryFactory extends RepositoryFactorySupport {
 
@@ -28,5 +31,11 @@ public class SolrRepositoryFactory extends RepositoryFactorySupport {
   @Override
   protected Class<?> getRepositoryBaseClass(RepositoryMetadata metadata) {
     return SimpleSolrRepository.class;
+  }
+
+  @Override
+  protected Optional<QueryLookupStrategy> getQueryLookupStrategy(Key key,
+      org.springframework.data.repository.query.QueryMethodEvaluationContextProvider evaluationContextProvider) {
+    return Optional.of(new SolrQueryLookupStrategy(solrTemplate));
   }
 }

@@ -1,9 +1,8 @@
 package dev.solrlazarus.sample;
 
-import dev.solrlazarus.autoconfigure.SolrPage;
-import dev.solrlazarus.autoconfigure.SolrTemplate;
-import dev.solrlazarus.autoconfigure.query.Criteria;
-import dev.solrlazarus.autoconfigure.query.SimpleQuery;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,11 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookController {
 
   private final BookRepository bookRepository;
-  private final SolrTemplate solrTemplate;
 
-  public BookController(BookRepository bookRepository, SolrTemplate solrTemplate) {
+  public BookController(BookRepository bookRepository) {
     this.bookRepository = bookRepository;
-    this.solrTemplate = solrTemplate;
   }
 
   @GetMapping
@@ -50,9 +47,18 @@ public class BookController {
   }
 
   @GetMapping("/search")
-  public SolrPage<Book> search(@RequestParam String q) {
-    var criteria = Criteria.where("title").contains(q);
-    var query = new SimpleQuery(criteria);
-    return solrTemplate.queryForPage("books", query, Book.class);
+  public List<Book> search(@RequestParam String q) {
+    return bookRepository.findByTitleContaining(q);
+  }
+
+  @GetMapping("/by-author")
+  public List<Book> findByAuthor(@RequestParam String author) {
+    return bookRepository.findByAuthor(author);
+  }
+
+  @GetMapping("/by-author-after")
+  public Page<Book> findByAuthorAfterYear(@RequestParam String author,
+      @RequestParam int year, Pageable pageable) {
+    return bookRepository.findByAuthorAndYearGreaterThan(author, year, pageable);
   }
 }

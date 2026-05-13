@@ -50,6 +50,15 @@ public class SimpleQuery {
     return this;
   }
 
+  public SimpleQuery setPageable(Pageable pageable) {
+    this.pageable = pageable;
+    return this;
+  }
+
+  public Criteria getCriteria() {
+    return criteria;
+  }
+
   public SimpleQuery setSort(Sort sort) {
     this.sort = sort;
     return this;

@@ -248,4 +248,32 @@ class CriteriaTest {
       assertThat(result).isEqualTo("category:books OR category:ebooks AND inStock:true");
     }
   }
+
+  @Nested
+  class CombiningIndependentChains {
+
+    @Test
+    void combinesTwoCriteriaWithAndUsingCriteriaOverload() {
+      var first = Criteria.where("title").is("Spring");
+      var second = Criteria.where("author").is("Picard");
+      var result = first.and(second).toQueryString();
+      assertThat(result).isEqualTo("title:Spring AND author:Picard");
+    }
+
+    @Test
+    void combinesTwoCriteriaWithOrUsingCriteriaOverload() {
+      var first = Criteria.where("title").is("Spring");
+      var second = Criteria.where("author").is("Picard");
+      var result = first.or(second).toQueryString();
+      assertThat(result).isEqualTo("title:Spring OR author:Picard");
+    }
+
+    @Test
+    void combinesMultiNodeChainsWithOr() {
+      var branch1 = Criteria.where("title").is("Spring").and("year").greaterThan(2000);
+      var branch2 = Criteria.where("author").is("Picard");
+      var result = branch1.or(branch2).toQueryString();
+      assertThat(result).isEqualTo("title:Spring AND year:{2000 TO *] OR author:Picard");
+    }
+  }
 }

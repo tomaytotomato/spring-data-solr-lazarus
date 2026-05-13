@@ -64,6 +64,12 @@ public class Criteria {
     return this;
   }
 
+  /** Negation of {@link #contains(String)}. */
+  public Criteria notContains(String value) {
+    predicates.add(new Predicate(WILDCARD + value + WILDCARD, true));
+    return this;
+  }
+
   /** Matches documents where the field value starts with the given prefix. */
   public Criteria startsWith(String value) {
     predicates.add(new Predicate(value + WILDCARD, false));
@@ -157,6 +163,11 @@ public class Criteria {
     return next;
   }
 
+  /** Connects an independently-built Criteria chain to this one with AND. */
+  public Criteria and(Criteria other) {
+    return connect(other, Conjunction.AND);
+  }
+
   /** Creates a new Criteria for the given field, linked to this one by OR. */
   public Criteria or(String field) {
     var next = new Criteria(field);
@@ -164,6 +175,30 @@ public class Criteria {
     this.sibling = next;
     this.conjunction = Conjunction.OR;
     return next;
+  }
+
+  /** Connects an independently-built Criteria chain to this one with OR. */
+  public Criteria or(Criteria other) {
+    return connect(other, Conjunction.OR);
+  }
+
+  private Criteria connect(Criteria other, Conjunction conj) {
+    var otherStart = other.root;
+    this.sibling = otherStart;
+    this.conjunction = conj;
+    var node = otherStart;
+    while (node != null) {
+      node.root = this.root;
+      node = node.sibling;
+    }
+    return findTail(otherStart);
+  }
+
+  private static Criteria findTail(Criteria node) {
+    while (node.sibling != null) {
+      node = node.sibling;
+    }
+    return node;
   }
 
   // -----------------------------------------------------------------------
