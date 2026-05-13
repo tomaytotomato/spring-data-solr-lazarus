@@ -6,6 +6,7 @@ import com.tomaytotomato.data.solr.query.Criteria;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
 import java.util.List;
 import java.util.Optional;
+import org.apache.solr.client.solrj.beans.Field;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -43,6 +44,7 @@ class SimpleSolrRepositoryTest {
 
   @SolrDocument(collection = "test")
   static class TestBook {
+    @Field
     String id;
   }
 
@@ -206,6 +208,34 @@ class SimpleSolrRepositoryTest {
 
       verify(solrTemplate).deleteByQuery("test", "*:*");
       verify(solrTemplate).commit("test");
+    }
+  }
+
+  @Nested
+  class DeleteEntity {
+
+    @Test
+    void deletesEntityByExtractingItsId() {
+      var entity = book("7");
+
+      repository.delete(entity);
+
+      verify(solrTemplate).deleteById("test", "7");
+    }
+  }
+
+  @Nested
+  class DeleteAllEntities {
+
+    @Test
+    void deletesEachEntityInIterable() {
+      var entities = List.of(book("10"), book("11"), book("12"));
+
+      repository.deleteAll(entities);
+
+      verify(solrTemplate).deleteById("test", "10");
+      verify(solrTemplate).deleteById("test", "11");
+      verify(solrTemplate).deleteById("test", "12");
     }
   }
 }
