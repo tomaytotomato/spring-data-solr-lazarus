@@ -24,6 +24,8 @@ public interface SolrOperations {
 
   long count(String collection, SimpleQuery query);
 
+  long count(String collection, SolrQuery query);
+
   void deleteById(String collection, String id);
 
   void deleteByQuery(String collection, String query);

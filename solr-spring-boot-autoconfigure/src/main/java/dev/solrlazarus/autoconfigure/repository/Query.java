@@ -11,4 +11,5 @@ import java.lang.annotation.Target;
 @Documented
 public @interface Query {
   String value();
+  boolean count() default false;
 }

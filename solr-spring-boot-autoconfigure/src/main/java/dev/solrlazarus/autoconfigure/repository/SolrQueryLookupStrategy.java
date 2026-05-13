@@ -21,6 +21,11 @@ public class SolrQueryLookupStrategy implements QueryLookupStrategy {
   public RepositoryQuery resolveQuery(Method method, RepositoryMetadata metadata,
       ProjectionFactory factory, NamedQueries namedQueries) {
     var queryMethod = new QueryMethod(method, metadata, factory);
+    var queryAnnotation = method.getAnnotation(Query.class);
+    if (queryAnnotation != null) {
+      return new StringBasedSolrQuery(queryMethod, solrTemplate,
+          queryAnnotation.value(), queryAnnotation.count());
+    }
     return new PartTreeSolrQuery(queryMethod, solrTemplate);
   }
 }

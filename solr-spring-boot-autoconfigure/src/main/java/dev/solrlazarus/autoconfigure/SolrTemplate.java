@@ -123,10 +123,14 @@ public class SolrTemplate implements SolrOperations {
 
   @Override
   public long count(String collection, SimpleQuery query) {
+    return count(collection, query.toSolrQuery());
+  }
+
+  @Override
+  public long count(String collection, SolrQuery query) {
     try {
-      var solrQuery = query.toSolrQuery();
-      solrQuery.setRows(0);
-      QueryResponse response = solrClient.query(collection, solrQuery);
+      query.setRows(0);
+      QueryResponse response = solrClient.query(collection, query);
       return response.getResults().getNumFound();
     } catch (IOException | SolrServerException e) {
       throw new SolrException("Failed to count in collection: " + collection, e);
