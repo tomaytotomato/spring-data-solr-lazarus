@@ -306,6 +306,39 @@ class SolrTemplateTest {
   }
 
   @Nested
+  class Count {
+
+    @Test
+    void doesNotMutateCallerQueryRowsWhenCounting() throws Exception {
+      var docList = new SolrDocumentList();
+      docList.setNumFound(5L);
+      var response = mock(QueryResponse.class);
+      when(response.getResults()).thenReturn(docList);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var originalQuery = new SolrQuery("*:*");
+      originalQuery.setRows(10);
+
+      template.count(COLLECTION, originalQuery);
+
+      assertThat(originalQuery.getRows()).isEqualTo(10);
+    }
+
+    @Test
+    void returnsNumFoundFromResponse() throws Exception {
+      var docList = new SolrDocumentList();
+      docList.setNumFound(42L);
+      var response = mock(QueryResponse.class);
+      when(response.getResults()).thenReturn(docList);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var result = template.count(COLLECTION, new SolrQuery("*:*"));
+
+      assertThat(result).isEqualTo(42L);
+    }
+  }
+
+  @Nested
   class GetSolrClient {
 
     @Test
