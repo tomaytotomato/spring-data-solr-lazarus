@@ -1,11 +1,13 @@
 package com.tomaytotomato.data.solr;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpJdkSolrClient;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,6 +31,19 @@ public class SolrAutoConfiguration {
       return new CloudSolrClient.Builder(List.of(properties.getZkHost()))
           .withDefaultCollection(properties.getDefaultCollection())
           .build();
+    }
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  @ConditionalOnClass(MeterRegistry.class)
+  @ConditionalOnBean(MeterRegistry.class)
+  static class MicrometerSolrConfiguration {
+
+    @Bean
+    @ConditionalOnMissingBean(SolrTemplate.class)
+    SolrTemplate micrometerSolrTemplate(SolrClient solrClient, SolrProperties properties,
+        Environment environment, MeterRegistry meterRegistry) {
+      return new MicrometerSolrTemplate(solrClient, properties.getCommitMode(), environment, meterRegistry);
     }
   }
 

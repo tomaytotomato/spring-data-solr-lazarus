@@ -3,6 +3,8 @@ package com.tomaytotomato.data.solr;
 import com.tomaytotomato.data.solr.repository.SolrRepositoryAutoConfiguration;
 import com.tomaytotomato.data.solr.testfixtures.TestSolrDocument;
 import com.tomaytotomato.data.solr.testfixtures.TestSolrDocumentRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.solr.client.solrj.SolrClient;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -103,6 +105,36 @@ class SolrAutoConfigurationTest {
             assertThat(ctx).hasSingleBean(SolrTemplate.class);
             assertThat(ctx.getBean(SolrTemplate.class)).isSameAs(userTemplate);
           });
+    }
+  }
+
+  @Nested
+  class MicrometerConditionalConfiguration {
+
+    @Configuration
+    static class MeterRegistryConfiguration {
+      @Bean
+      MeterRegistry meterRegistry() {
+        return new SimpleMeterRegistry();
+      }
+    }
+
+    @Test
+    void createsMicrometerSolrTemplateWhenMeterRegistryIsPresent() {
+      contextRunner
+          .withUserConfiguration(MeterRegistryConfiguration.class)
+          .run(ctx -> {
+            assertThat(ctx).hasSingleBean(SolrTemplate.class);
+            assertThat(ctx.getBean(SolrTemplate.class)).isInstanceOf(MicrometerSolrTemplate.class);
+          });
+    }
+
+    @Test
+    void createsPlainSolrTemplateWhenMeterRegistryIsAbsent() {
+      contextRunner.run(ctx -> {
+        assertThat(ctx).hasSingleBean(SolrTemplate.class);
+        assertThat(ctx.getBean(SolrTemplate.class)).isNotInstanceOf(MicrometerSolrTemplate.class);
+      });
     }
   }
 
