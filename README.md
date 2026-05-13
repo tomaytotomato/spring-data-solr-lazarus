@@ -3,7 +3,7 @@
 # Spring Data Solr - Lazarus
 
 [![CI](https://github.com/tomaytotomato/spring-data-solr-lazarus/actions/workflows/ci.yml/badge.svg)](https://github.com/tomaytotomato/spring-data-solr-lazarus/actions/workflows/ci.yml)
-![Java](https://img.shields.io/badge/Java-25-orange)
+![Java](https://img.shields.io/badge/Java-21%2B-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-brightgreen)
 ![Solr](https://img.shields.io/badge/Solr-9%20%7C%2010-blue)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue)
@@ -40,7 +40,7 @@ Integration-tested against both Solr 9 and Solr 10.
 
 | Component          | Version   |
 |--------------------|-----------|
-| Java               | 25        |
+| Java               | 21+       |
 | Spring Boot        | 4.0.6     |
 | Spring Framework   | 7.0.x     |
 | SolrJ              | 10.0.0    |
@@ -80,7 +80,7 @@ solr-spring-boot-sample         : demo Spring Boot app with Docker Compose suppo
 
 ### Prerequisites
 
-- JDK 25+ (or use [jenv](https://www.jenv.be/) `.java-version` is included)
+- JDK 21+ (or use [jenv](https://www.jenv.be/) — `.java-version` is included). CI tests on 21 and 25.
 - Docker (for integration tests and the sample app)
 - No Maven installation needed : the project includes the Maven Wrapper
 

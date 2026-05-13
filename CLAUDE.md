@@ -6,8 +6,8 @@ repository.
 ## Project Overview
 
 Spring Data Solr Lazarus — a modern Spring Boot starter for Apache Solr 10, resurrecting the
-archived `spring-data-solr` project. Personal project (not giffgaff). Targets JDK 25 and Spring Boot
-4.0.6.
+archived `spring-data-solr` project. Personal project (not giffgaff). Compiles to JDK 21 (baseline),
+CI tests on JDK 21 and 25. Spring Boot 4.0.6.
 
 ## Build Commands
 
@@ -125,7 +125,7 @@ include the uniqueKey field. Execute with `SolrTemplate.queryWithCursor()`.
 | Spring Boot    | 4.0.6   | Boot 4 moved health classes from `boot.actuate` to `boot.health`                                                 |
 | SolrJ          | 10.0.0  | Split into `solr-solrj` (core), `solr-solrj-jetty`, `solr-solrj-zookeeper`                                       |
 | Testcontainers | 2.0.5   | BOM managed explicitly (not by Boot). Artifacts renamed to `testcontainers-solr`, `testcontainers-junit-jupiter` |
-| JDK            | 25      | Pinned via `.java-version` (jenv)                                                                                |
+| JDK            | 21+     | Compiler target 21, CI matrix tests 21 and 25. `.java-version` for jenv                                          |
 
 ## SolrJ 10 Gotchas
 

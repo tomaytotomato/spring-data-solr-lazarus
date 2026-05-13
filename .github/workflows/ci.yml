@@ -27,28 +27,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        java-version: ['21', '25']
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK ${{ matrix.java-version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: ${{ matrix.java-version }}
           distribution: 'temurin'
           cache: maven
 
       - name: Build and test
-        run: mvn clean verify -pl solr-spring-boot-autoconfigure,solr-spring-boot-starter --batch-mode
+        run: ./mvnw clean verify -pl solr-spring-boot-autoconfigure,solr-spring-boot-starter --batch-mode
 
       - name: Upload JaCoCo report
-        if: always()
+        if: always() && matrix.java-version == '21'
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
           path: solr-spring-boot-autoconfigure/target/site/jacoco/
 
       - name: Generate coverage badge
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && matrix.java-version == '21'
         run: |
           COVERAGE=$(grep -oP 'Total.*?([0-9]{1,3})%' solr-spring-boot-autoconfigure/target/site/jacoco/index.html | grep -oP '[0-9]{1,3}%' | head -1 || echo "N/A")
           echo "Coverage: $COVERAGE"
