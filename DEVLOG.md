@@ -93,10 +93,34 @@ boolean existsByTitle(String title);
 
 **Known limitation:** Derived queries use Java property names as Solr field names. If a field has `@Field("publication_year")` but the property is `year`, the derived query queries `year:` not `publication_year:`. Proper @Field mapping is a future enhancement.
 
+### Session 2: Migrate to Spring Boot 4.0.6 + JDK 25 (09:30–10:00)
+
+**Commit:** `1993868`
+
+Bumped from Spring Boot 3.5.0 → 4.0.6, Spring Data Commons 3.5.0 → 4.0.5, targeting JDK 25 (LTS).
+
+**Breaking changes resolved:**
+
+| What moved | Old (Boot 3.5) | New (Boot 4.0) |
+|------------|----------------|----------------|
+| Health classes | `boot.actuate.health` | `boot.health.contributor` |
+| Health auto-config | `boot.actuate.autoconfigure.health` | `boot.health.autoconfigure.contributor` |
+| Actuator dependency | `spring-boot-actuator-autoconfigure` | `spring-boot-health` |
+| Query lookup strategy | `QueryMethodEvaluationContextProvider` | `ValueExpressionDelegate` |
+| Testcontainers artifacts | `solr`, `junit-jupiter` | `testcontainers-solr`, `testcontainers-junit-jupiter` |
+| Testcontainers BOM | managed by Boot | explicit `testcontainers-bom` 2.0.5 required |
+
+**Gotcha:** `PropertyPath` moved from `org.springframework.data.mapping` to `org.springframework.data.core` in Spring Data 4.0. Didn't require a code change (we only call `part.getProperty().getSegment()`) but caused a stale-classpath `NoSuchMethodError` until a clean build was run. Lesson: always `mvn clean` after a major BOM bump.
+
+**Also fixed:** `SolrIntegrationTest.TestBook` was package-private — SolrJ's `DocumentObjectBinder` couldn't instantiate it. Made it `public`. This was a latent bug hidden because Docker wasn't running in earlier sessions.
+
+**Tests:** 158 total (147 unit + 11 integration), 0 failures. JDK 25 required to build.
+
 ---
 
 ## What's Next
 
+- [ ] Install JDK 25 (`brew install --cask temurin@25`)
 - [ ] `@Query` annotation — raw Solr query strings on repository methods
 - [ ] `@Field` name mapping in derived queries
 - [ ] Faceting, highlighting, grouping support
