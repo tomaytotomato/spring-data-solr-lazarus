@@ -30,8 +30,14 @@ public class SolrAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(SolrClient.class)
     SolrClient cloudSolrClient(SolrProperties properties) {
+      var internalClientBuilder = new HttpJdkSolrClient.Builder()
+          .withConnectionTimeout(
+              properties.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
+          .withRequestTimeout(
+              properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS);
       return new CloudSolrClient.Builder(List.of(properties.getZkHost()))
           .withDefaultCollection(properties.getDefaultCollection())
+          .withHttpClientBuilder(internalClientBuilder)
           .build();
     }
   }

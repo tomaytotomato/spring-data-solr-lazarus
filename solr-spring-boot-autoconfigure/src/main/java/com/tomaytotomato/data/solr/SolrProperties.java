@@ -2,62 +2,54 @@ package com.tomaytotomato.data.solr;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "spring.solr")
 public class SolrProperties {
 
-  private String host = "http://localhost:8983/solr";
-  private String defaultCollection;
-  private String zkHost;
-  private Duration connectionTimeout = Duration.ofSeconds(10);
-  private Duration requestTimeout = Duration.ofSeconds(60);
-  private CommitMode commitMode = CommitMode.NONE;
+  private final String host;
+  private final String defaultCollection;
+  private final String zkHost;
+  private final Duration connectionTimeout;
+  private final Duration requestTimeout;
+  private final CommitMode commitMode;
+
+  public SolrProperties(
+      @DefaultValue("http://localhost:8983/solr") String host,
+      String defaultCollection,
+      String zkHost,
+      @DefaultValue("10s") Duration connectionTimeout,
+      @DefaultValue("60s") Duration requestTimeout,
+      @DefaultValue("NONE") CommitMode commitMode) {
+    this.host = host;
+    this.defaultCollection = defaultCollection;
+    this.zkHost = zkHost;
+    this.connectionTimeout = connectionTimeout;
+    this.requestTimeout = requestTimeout;
+    this.commitMode = commitMode;
+  }
 
   public String getHost() {
     return host;
-  }
-
-  public void setHost(String host) {
-    this.host = host;
   }
 
   public String getDefaultCollection() {
     return defaultCollection;
   }
 
-  public void setDefaultCollection(String defaultCollection) {
-    this.defaultCollection = defaultCollection;
-  }
-
   public String getZkHost() {
     return zkHost;
-  }
-
-  public void setZkHost(String zkHost) {
-    this.zkHost = zkHost;
   }
 
   public Duration getConnectionTimeout() {
     return connectionTimeout;
   }
 
-  public void setConnectionTimeout(Duration connectionTimeout) {
-    this.connectionTimeout = connectionTimeout;
-  }
-
   public Duration getRequestTimeout() {
     return requestTimeout;
   }
 
-  public void setRequestTimeout(Duration requestTimeout) {
-    this.requestTimeout = requestTimeout;
-  }
-
   public CommitMode getCommitMode() {
     return commitMode;
-  }
-
-  public void setCommitMode(CommitMode commitMode) {
-    this.commitMode = commitMode;
   }
 }
