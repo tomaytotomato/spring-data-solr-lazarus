@@ -1,5 +1,8 @@
 package dev.solrlazarus.autoconfigure;
 
+import dev.solrlazarus.autoconfigure.mapping.SolrDocument;
+import dev.solrlazarus.autoconfigure.query.Criteria;
+import dev.solrlazarus.autoconfigure.query.SimpleQuery;
 import java.io.IOException;
 import java.util.List;
 import org.apache.solr.client.solrj.SolrClient;
@@ -13,12 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +49,11 @@ class SolrTemplateTest {
   }
 
   static class TestDocument {
+    String id;
+  }
+
+  @SolrDocument(collection = "annotated-collection")
+  static class AnnotatedDocument {
     String id;
   }
 
@@ -298,6 +308,82 @@ class SolrTemplateTest {
     @Test
     void returnsTheWrappedSolrClient() {
       assertThat(template.getSolrClient()).isSameAs(solrClient);
+    }
+  }
+
+  @Nested
+  class SaveWithAnnotatedCollection {
+
+    @Test
+    void resolvesCollectionFromSolrDocumentAnnotation() throws Exception {
+      var entity = new AnnotatedDocument();
+      entity.id = "1";
+
+      var result = template.save(entity);
+
+      verify(solrClient).addBean("annotated-collection", entity);
+      assertThat(result).isSameAs(entity);
+    }
+  }
+
+  @Nested
+  class FindByIdWithAnnotatedCollection {
+
+    @Test
+    void resolvesCollectionFromSolrDocumentAnnotation() throws Exception {
+      var entity = new AnnotatedDocument();
+      entity.id = "42";
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(AnnotatedDocument.class)).thenReturn(List.of(entity));
+      when(solrClient.query(eq("annotated-collection"), any(SolrParams.class))).thenReturn(response);
+
+      var result = template.findById("42", AnnotatedDocument.class);
+
+      assertThat(result).isPresent().contains(entity);
+    }
+  }
+
+  @Nested
+  class SoftCommit {
+
+    @Test
+    void delegatesToSolrClientSoftCommit() throws Exception {
+      template.softCommit(COLLECTION);
+      verify(solrClient).commit(COLLECTION, true, true, true);
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.commit(COLLECTION, true, true, true)).thenThrow(new IOException("network error"));
+      assertThatThrownBy(() -> template.softCommit(COLLECTION))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
+  }
+
+  @Nested
+  class CommitModeImmediate {
+
+    @Test
+    void commitsAfterSaveWhenModeIsImmediate() throws Exception {
+      var immediateTemplate = new SolrTemplate(solrClient, CommitMode.IMMEDIATE);
+      var entity = document("1");
+
+      immediateTemplate.save(COLLECTION, entity);
+
+      verify(solrClient).addBean(COLLECTION, entity);
+      verify(solrClient).commit(COLLECTION);
+    }
+
+    @Test
+    void doesNotCommitAfterSaveWhenModeIsNone() throws Exception {
+      var entity = document("1");
+
+      template.save(COLLECTION, entity);
+
+      verify(solrClient).addBean(COLLECTION, entity);
+      verify(solrClient, never()).commit(COLLECTION);
     }
   }
 }
