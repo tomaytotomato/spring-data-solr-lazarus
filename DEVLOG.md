@@ -118,6 +118,31 @@ Bumped from Spring Boot 3.5.0 → 4.0.6, Spring Data Commons 3.5.0 → 4.0.5, ta
 
 **Build verified:** `mvn clean verify` — all modules compile and pass on JDK 25, Spring Boot 4.0.6. `.java-version` pinned via jenv.
 
+### Session 3: Claude Code Setup & Documentation (13:00–14:00)
+
+**Commits:** `839bf53` → `992fdc2`
+
+Shifted focus from code to developer experience. Pinned JDK 25 via jenv (`.java-version`), added a
+README with project motivation and reference links, and created `CLAUDE.md` — a comprehensive
+guidance file for Claude Code covering build commands, module structure, architecture, SolrJ 10
+gotchas, and the known `@Field` mapping limitation.
+
+Also created a `devlog` skill for the `bruce/personal` Claude Code plugin to enforce the discipline
+of updating this file after every work session. The skill gathers git context automatically and
+follows the established entry format.
+
+- Added `.java-version` pinned to 25.0 for jenv
+- Created README.md with project overview, motivation, and reference links
+- Created CLAUDE.md with full architecture documentation
+- Built `devlog` skill (SKILL.md) for Claude Code personal plugin
+- Verified full build passes on JDK 25.0.3 (Temurin LTS)
+
+**Gotcha:** Claude Code cannot write to `.claude/settings.json` directly — the harness blocks
+self-modification of permission files. Settings must be created manually or committed as part of
+the repo.
+
+**Tests:** 158 total (147 unit + 11 integration), 0 failures. No test changes this session.
+
 ---
 
 ## What's Next
@@ -126,5 +151,5 @@ Bumped from Spring Boot 3.5.0 → 4.0.6, Spring Data Commons 3.5.0 → 4.0.5, ta
 - [ ] `@Field` name mapping in derived queries
 - [ ] Faceting, highlighting, grouping support
 - [ ] Custom converter pipeline (MappingSolrConverter)
-- [ ] README.md with usage documentation
+- [x] README.md with usage documentation
 - [ ] Publish to Maven Central

@@ -16,13 +16,15 @@ Like Lazarus, the Spring Data Solr project has been resurrected from the bit voi
 
 ![ytho.png](assets/ytho.png)
 
-Projects often go stale or die because of burnout, lack of time/resources or changing priorities.
+Projects often go stale or die because of burnout, boredom, changing priorities or severely breaking API changes in an upstream dependency.
 
-What if we could prevent this from happening by using LLMs to take on the maintenance burden?
+Once that staleness kicks in, its very hard to bring it back to life unless you have sheer determination or fresh blood e.g. [Vavr](https://github.com/vavr-io/vavr)
 
-The gaps in API drift would be managed, old dependencies and security issues would be resolved, and the project would stay alive and useful for the community.
+LLMs are pretty good at taking up the boring and painful rewriting tasks; as long as they are briefed and controlled properly. 
 
-# 
+The hypothesis here is that creating a repo and having an LLM custodian will allow it to last longer and still have useful features added and maintained.
+
+
 
 
 # Links and References
