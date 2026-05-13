@@ -5,10 +5,12 @@
 [![CI](https://github.com/tomaytotomato/spring-data-solr-lazarus/actions/workflows/ci.yml/badge.svg)](https://github.com/tomaytotomato/spring-data-solr-lazarus/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-25-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.6-brightgreen)
-![SolrJ](https://img.shields.io/badge/SolrJ-10.0.0-blue)
+![Solr](https://img.shields.io/badge/Solr-9%20%7C%2010-blue)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue)
 
-A modern Spring Boot starter for Apache Solr 10, resurrecting the archived [spring-data-solr](https://github.com/spring-attic/spring-data-solr) project with a clean reimplementation on a modern stack.
+Sometimes you wonder if a project is really dead or is just taking a break in the attic.
+
+Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has been resurrected from the bit void — rebuilt from scratch using Claude Code and a modern stack. Integration-tested against both Solr 9 and Solr 10.
 
 ## Features
 
@@ -32,17 +34,20 @@ A modern Spring Boot starter for Apache Solr 10, resurrecting the archived [spri
 | Spring Boot | 4.0.6 |
 | Spring Framework | 7.0.x |
 | SolrJ | 10.0.0 |
+| Solr compatibility | 9.x, 10.x |
 | Testcontainers | 2.0.5 |
 
 ## Why?
 
 ![ytho.png](assets/ytho.png)
 
+Projects often go stale or die because of burnout, lack of time/resources or changing priorities.
+
+What if we could prevent this from happening by using LLMs to take on the maintenance burden? The gaps in API drift would be managed, old dependencies and security issues would be resolved, and the project would stay alive and useful for the community.
+
 The original Spring Data Solr was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/) and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). It never supported Solr 9+, Spring Boot 3+, or JDK 17+. Teams with Solr infrastructure were left with no Spring Data abstraction and no upgrade path.
 
 Lazarus is a clean reimplementation — not a fork — fixing the original's design flaws and targeting the current stack. See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
-
-LLMs are pretty good at taking up the boring and painful rewriting tasks; as long as they are briefed and controlled properly. The hypothesis here is that creating a repo and having an LLM custodian will allow it to last longer and still have useful features added and maintained.
 
 ## Module Structure
 
@@ -54,12 +59,18 @@ solr-spring-boot-sample         — demo Spring Boot app with Docker Compose sup
 
 ## Quick Start
 
+### Prerequisites
+
+- JDK 25+ (or use [jenv](https://www.jenv.be/) — `.java-version` is included)
+- Docker (for integration tests and the sample app)
+- No Maven installation needed — the project includes the Maven Wrapper
+
 ### Build
 
 ```bash
-mvn clean verify                    # full build + tests + coverage
-mvn test                            # unit tests only
-mvn test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module only
+./mvnw clean verify                    # full build + tests + coverage
+./mvnw test                            # unit tests only
+./mvnw test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module only
 ```
 
 ### Run the Sample App
@@ -67,7 +78,7 @@ mvn test -pl solr-spring-boot-autoconfigure  # tests in autoconfigure module onl
 With Docker running:
 
 ```bash
-mvn spring-boot:run -pl solr-spring-boot-sample
+./mvnw spring-boot:run -pl solr-spring-boot-sample
 ```
 
 This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book CRUD endpoints and Actuator health at `/actuator/health`.
@@ -115,9 +126,9 @@ public interface BookRepository extends SolrRepository<Book, String> {
 
 ## Links and References
 
+- [A picture of Josh Long](https://joshlong.com/img/josh-hero-image.2ac6dba0.png)
 - [Dev Log](DEVLOG.md)
 - [Limitations of the Original](LIMITATIONS.md)
 - [Original Project (Spring Attic)](https://github.com/spring-attic/spring-data-solr)
 - [Spring Boot Starter Template](https://github.com/ericus20/spring-boot-starter)
 - [Apache SolrJ Reference](https://solr.apache.org/guide/solr/latest/deployment-guide/solrj.html)
-- [A picture of Josh Long](https://joshlong.com/img/josh-hero-image.2ac6dba0.png)
