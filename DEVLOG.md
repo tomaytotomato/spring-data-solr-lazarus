@@ -212,7 +212,7 @@ showcases CRUD, highlighting, faceting, cursor paging, and statistics endpoints.
 
 ### Session 5: Multi-Version Integration Tests (14:30–14:45)
 
-**Commit:** `0ae1300`
+**Commit:** `a74f812`
 
 Refactored integration tests to run against both Solr 9 and Solr 10. The original `SolrIntegrationTest`
 used a hardcoded `solr:9` image — a leftover from the initial scaffolding session, never upgraded to
@@ -238,6 +238,38 @@ to eliminate a latent ordering dependency — JUnit 5 does not guarantee executi
   detection all work unchanged across both versions.
 
 **Tests:** 267 total (245 unit + 22 integration), 0 failures. JaCoCo coverage gate passes at >80%.
+
+### Session 6: Polish, Fixes & Developer Experience (15:00–16:40)
+
+**Commits:** `4932c4a` → `8cde7e9`
+
+Housekeeping session — restored personality to the README after the Session 4 agents had steamrolled
+Bruce's narrative intro with a generic one-liner. Merged both versions: Bruce's voice for the opening
+hook and "Why?" motivation, the agent's technical depth for Features/Tech Stack/Quick Start. Added a
+Prerequisites section and a Solr `9 | 10` compatibility badge.
+
+Added the Maven Wrapper (`mvnw` / `mvnw.cmd`, Maven 3.9.15) so contributors can build without a local
+Maven installation. All README build commands now reference `./mvnw` instead of `mvn`.
+
+Added `paths-ignore` to the GitHub Actions CI workflow — pushes that only touch markdown, assets,
+license, `.gitignore`, `.java-version`, or `.claude/` config no longer trigger a build.
+
+Fixed a startup-crashing bug in the sample app: `@EnableSolrRepositories` was missing `includeFilters`,
+`excludeFilters`, and `bootstrapMode` attributes. Spring Data Commons 4.0.5's
+`AnnotationRepositoryConfigurationSource.hasExplicitFilters()` reads these via `getAnnotationArray()`
+and throws `IllegalArgumentException` when they're absent. This was a latent bug — the unit and
+integration tests never exercised the full auto-configuration boot path that the sample app triggers.
+
+**Gotchas discovered:**
+- Spring Data Commons 4.0.5 requires `@Enable*Repositories` annotations to declare `includeFilters`,
+  `excludeFilters`, and `bootstrapMode` attributes. The old spring-data-solr didn't need these because
+  Spring Data Commons 3.x didn't read them in the same code path. This is undocumented in the Spring
+  Data 4.0 migration guide.
+- Running `mvn spring-boot:run -pl solr-spring-boot-sample` from the repo root causes a Docker Compose
+  file lookup failure because the working directory is the repo root, not the module directory. The
+  Docker Compose support resolves paths relative to `user.dir`.
+
+**Tests:** 267 total (245 unit + 22 integration), 0 failures.
 
 ---
 
