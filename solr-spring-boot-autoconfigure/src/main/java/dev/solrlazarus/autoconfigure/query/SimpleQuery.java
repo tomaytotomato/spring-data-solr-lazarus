@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.solr.client.solrj.request.SolrQuery;
+import org.apache.solr.common.params.FacetParams;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
@@ -20,6 +21,9 @@ public class SimpleQuery {
   private final List<String> projectionFields = new ArrayList<>();
   private String requestHandler;
   private String defType;
+  private String cursorMark;
+  private HighlightOptions highlightOptions;
+  private FacetOptions facetOptions;
 
   public SimpleQuery(Criteria criteria) {
     this.criteria = criteria;
@@ -50,6 +54,33 @@ public class SimpleQuery {
     return this;
   }
 
+  public SimpleQuery setCursorMark(String cursorMark) {
+    this.cursorMark = cursorMark;
+    return this;
+  }
+
+  public String getCursorMark() {
+    return cursorMark;
+  }
+
+  public SimpleQuery setHighlightOptions(HighlightOptions options) {
+    this.highlightOptions = options;
+    return this;
+  }
+
+  public HighlightOptions getHighlightOptions() {
+    return highlightOptions;
+  }
+
+  public SimpleQuery setFacetOptions(FacetOptions options) {
+    this.facetOptions = options;
+    return this;
+  }
+
+  public FacetOptions getFacetOptions() {
+    return facetOptions;
+  }
+
   public SimpleQuery setPageable(Pageable pageable) {
     this.pageable = pageable;
     return this;
@@ -74,6 +105,9 @@ public class SimpleQuery {
     applyProjectionFields(solrQuery);
     applyRequestHandler(solrQuery);
     applyDefType(solrQuery);
+    applyCursorMark(solrQuery);
+    applyHighlighting(solrQuery);
+    applyFaceting(solrQuery);
 
     return solrQuery;
   }
@@ -127,6 +161,44 @@ public class SimpleQuery {
   private void applyDefType(SolrQuery solrQuery) {
     if (defType != null) {
       solrQuery.set("defType", defType);
+    }
+  }
+
+  private void applyCursorMark(SolrQuery solrQuery) {
+    if (cursorMark != null) {
+      solrQuery.set("cursorMark", cursorMark);
+    }
+  }
+
+  private void applyHighlighting(SolrQuery solrQuery) {
+    if (highlightOptions == null) {
+      return;
+    }
+    solrQuery.setHighlight(true);
+    solrQuery.set("hl.tag.pre", highlightOptions.getPreTag());
+    solrQuery.set("hl.tag.post", highlightOptions.getPostTag());
+    solrQuery.set("hl.snippets", highlightOptions.getSnippets());
+    solrQuery.set("hl.fragsize", highlightOptions.getFragsize());
+    for (var field : highlightOptions.getFields()) {
+      solrQuery.addHighlightField(field);
+    }
+  }
+
+  private void applyFaceting(SolrQuery solrQuery) {
+    if (facetOptions == null) {
+      return;
+    }
+    solrQuery.set(FacetParams.FACET, true);
+    solrQuery.set(FacetParams.FACET_MINCOUNT, facetOptions.getMinCount());
+    solrQuery.set(FacetParams.FACET_LIMIT, facetOptions.getLimit());
+    if (facetOptions.getSort() != null) {
+      solrQuery.set(FacetParams.FACET_SORT, facetOptions.getSort());
+    }
+    for (var field : facetOptions.getFacetFields()) {
+      solrQuery.addFacetField(field);
+    }
+    for (var fq : facetOptions.getFacetQueries()) {
+      solrQuery.addFacetQuery(fq);
     }
   }
 }

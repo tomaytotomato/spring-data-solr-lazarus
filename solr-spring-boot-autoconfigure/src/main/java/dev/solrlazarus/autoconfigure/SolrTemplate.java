@@ -1,11 +1,16 @@
 package dev.solrlazarus.autoconfigure;
 
 import dev.solrlazarus.autoconfigure.mapping.SolrDocumentResolver;
+import dev.solrlazarus.autoconfigure.query.FacetFieldEntry;
+import dev.solrlazarus.autoconfigure.query.FacetQueryEntry;
+import dev.solrlazarus.autoconfigure.query.HighlightEntry;
 import dev.solrlazarus.autoconfigure.query.SimpleQuery;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -122,6 +127,71 @@ public class SolrTemplate implements SolrOperations {
   }
 
   @Override
+  public <T> HighlightPage<T> queryForHighlightPage(String collection, SimpleQuery query, Class<T> type) {
+    try {
+      var solrQuery = query.toSolrQuery();
+      QueryResponse response = solrClient.query(collection, solrQuery);
+      var beans = response.getBeans(type);
+      var docs = response.getResults();
+      long numFound = docs.getNumFound();
+      var highlighting = response.getHighlighting();
+
+      int start = solrQuery.getStart() != null ? solrQuery.getStart() : 0;
+      int rows = solrQuery.getRows() != null ? solrQuery.getRows() : 10;
+      var pageable = Pageable.ofSize(rows).withPage(rows > 0 ? start / rows : 0);
+
+      var entries = new ArrayList<HighlightEntry<T>>();
+      for (int i = 0; i < beans.size(); i++) {
+        var docId = docs.get(i).getFieldValue("id");
+        var docHighlights = highlighting != null && docId != null
+            ? highlighting.getOrDefault(docId.toString(), Map.of())
+            : Map.<String, List<String>>of();
+        entries.add(new HighlightEntry<>(beans.get(i), docHighlights));
+      }
+
+      return new HighlightPage<>(beans, pageable, numFound, entries);
+    } catch (IOException | SolrServerException e) {
+      throw new SolrException("Failed to query with highlights for collection: " + collection, e);
+    }
+  }
+
+  @Override
+  public <T> FacetPage<T> queryForFacetPage(String collection, SimpleQuery query, Class<T> type) {
+    try {
+      var solrQuery = query.toSolrQuery();
+      QueryResponse response = solrClient.query(collection, solrQuery);
+      var beans = response.getBeans(type);
+      long numFound = response.getResults().getNumFound();
+
+      int start = solrQuery.getStart() != null ? solrQuery.getStart() : 0;
+      int rows = solrQuery.getRows() != null ? solrQuery.getRows() : 10;
+      var pageable = Pageable.ofSize(rows).withPage(rows > 0 ? start / rows : 0);
+
+      var facetFieldMap = new LinkedHashMap<String, List<FacetFieldEntry>>();
+      var facetFieldsResponse = response.getFacetFields();
+      if (facetFieldsResponse != null) {
+        for (var facetField : facetFieldsResponse) {
+          var entries = facetField.getValues().stream()
+              .map(count -> new FacetFieldEntry(count.getName(), count.getCount()))
+              .toList();
+          facetFieldMap.put(facetField.getName(), entries);
+        }
+      }
+
+      var facetQueryEntries = new ArrayList<FacetQueryEntry>();
+      var facetQueryResponse = response.getFacetQuery();
+      if (facetQueryResponse != null) {
+        facetQueryResponse.forEach((q, c) ->
+            facetQueryEntries.add(new FacetQueryEntry(q, c)));
+      }
+
+      return new FacetPage<>(beans, pageable, numFound, facetFieldMap, facetQueryEntries);
+    } catch (IOException | SolrServerException e) {
+      throw new SolrException("Failed to query with facets for collection: " + collection, e);
+    }
+  }
+
+  @Override
   public long count(String collection, SimpleQuery query) {
     return count(collection, query.toSolrQuery());
   }
@@ -173,6 +243,19 @@ public class SolrTemplate implements SolrOperations {
       solrClient.commit(collection, true, true, true);
     } catch (IOException | SolrServerException e) {
       throw new SolrException("Failed to soft commit collection: " + collection, e);
+    }
+  }
+
+  @Override
+  public <T> CursorResult<T> queryWithCursor(String collection, SimpleQuery query, Class<T> type) {
+    try {
+      var solrQuery = query.toSolrQuery();
+      QueryResponse response = solrClient.query(collection, solrQuery);
+      var beans = response.getBeans(type);
+      var nextCursorMark = response.getNextCursorMark();
+      return CursorResult.of(beans, query.getCursorMark(), nextCursorMark);
+    } catch (IOException | SolrServerException e) {
+      throw new SolrException("Failed to query with cursor for collection: " + collection, e);
     }
   }
 

@@ -22,6 +22,10 @@ public interface SolrOperations {
 
   <T> SolrPage<T> queryForPage(String collection, SimpleQuery query, Class<T> type);
 
+  <T> HighlightPage<T> queryForHighlightPage(String collection, SimpleQuery query, Class<T> type);
+
+  <T> FacetPage<T> queryForFacetPage(String collection, SimpleQuery query, Class<T> type);
+
   long count(String collection, SimpleQuery query);
 
   long count(String collection, SolrQuery query);
@@ -41,6 +45,8 @@ public interface SolrOperations {
   <T> Optional<T> findById(String id, Class<T> type);
 
   <T> SolrPage<T> queryForPage(SimpleQuery query, Class<T> type, Pageable pageable);
+
+  <T> CursorResult<T> queryWithCursor(String collection, SimpleQuery query, Class<T> type);
 
   SolrClient getSolrClient();
 }

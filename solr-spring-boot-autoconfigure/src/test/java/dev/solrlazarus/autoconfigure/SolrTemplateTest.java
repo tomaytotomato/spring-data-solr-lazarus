@@ -2,12 +2,15 @@ package dev.solrlazarus.autoconfigure;
 
 import dev.solrlazarus.autoconfigure.mapping.SolrDocument;
 import dev.solrlazarus.autoconfigure.query.Criteria;
+import dev.solrlazarus.autoconfigure.query.HighlightOptions;
 import dev.solrlazarus.autoconfigure.query.SimpleQuery;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.request.SolrQuery;
+import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -384,6 +387,143 @@ class SolrTemplateTest {
 
       verify(solrClient).addBean(COLLECTION, entity);
       verify(solrClient, never()).commit(COLLECTION);
+    }
+  }
+
+  @Nested
+  class QueryWithCursor {
+
+    @Test
+    void returnsContentWithNextCursorMarkAndHasMoreTrueWhenCursorAdvances() throws Exception {
+      var entity = document("1");
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getNextCursorMark()).thenReturn("AoE=");
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"))
+          .setCursorMark("*");
+
+      var result = template.queryWithCursor(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.content()).containsExactly(entity);
+      assertThat(result.cursorMark()).isEqualTo("AoE=");
+      assertThat(result.hasMore()).isTrue();
+    }
+
+    @Test
+    void hasMoreIsFalseWhenNextCursorMarkEqualsRequestCursorMark() throws Exception {
+      var entity = document("2");
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getNextCursorMark()).thenReturn("AoE=");
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"))
+          .setCursorMark("AoE=");
+
+      var result = template.queryWithCursor(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.hasMore()).isFalse();
+      assertThat(result.cursorMark()).isEqualTo("AoE=");
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class)))
+          .thenThrow(new IOException("network error"));
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"))
+          .setCursorMark("*");
+
+      assertThatThrownBy(() -> template.queryWithCursor(COLLECTION, query, TestDocument.class))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
+  }
+
+  @Nested
+  class QueryForFacetPage {
+
+    @Test
+    void returnsFieldFacetsParsedFromResponse() throws Exception {
+      var entity = document("1");
+      var docList = new SolrDocumentList();
+      docList.setNumFound(1L);
+
+      var genreField = new org.apache.solr.client.solrj.response.FacetField("genre");
+      genreField.add("sci-fi", 42L);
+      genreField.add("drama", 17L);
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList);
+      when(response.getFacetFields()).thenReturn(List.of(genreField));
+      when(response.getFacetQuery()).thenReturn(Map.of());
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForFacetPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getFacetField("genre")).hasSize(2);
+      assertThat(result.getFacetField("genre").get(0).value()).isEqualTo("sci-fi");
+      assertThat(result.getFacetField("genre").get(0).count()).isEqualTo(42L);
+      assertThat(result.getFacetField("genre").get(1).value()).isEqualTo("drama");
+      assertThat(result.getFacetField("genre").get(1).count()).isEqualTo(17L);
+    }
+
+    @Test
+    void returnsQueryFacetsParsedFromResponse() throws Exception {
+      var docList = new SolrDocumentList();
+      docList.setNumFound(0L);
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(docList);
+      when(response.getFacetFields()).thenReturn(List.of());
+      when(response.getFacetQuery()).thenReturn(Map.of("price:[0 TO 10]", 23, "price:[10 TO 100]", 87));
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForFacetPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getFacetQueries()).hasSize(2);
+      assertThat(result.getFacetQueries())
+          .extracting(dev.solrlazarus.autoconfigure.query.FacetQueryEntry::query)
+          .containsExactlyInAnyOrder("price:[0 TO 10]", "price:[10 TO 100]");
+    }
+
+    @Test
+    void returnsEmptyFacetsWhenNullFacetFields() throws Exception {
+      var docList = new SolrDocumentList();
+      docList.setNumFound(0L);
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(docList);
+      when(response.getFacetFields()).thenReturn(null);
+      when(response.getFacetQuery()).thenReturn(null);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForFacetPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getFacetFields()).isEmpty();
+      assertThat(result.getFacetQueries()).isEmpty();
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class)))
+          .thenThrow(new IOException("network error"));
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+
+      assertThatThrownBy(() -> template.queryForFacetPage(COLLECTION, query, TestDocument.class))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
     }
   }
 }
