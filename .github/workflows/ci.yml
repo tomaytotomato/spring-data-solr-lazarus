@@ -3,8 +3,22 @@ name: CI
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.java-version'
+      - '.claude/**'
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'assets/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.java-version'
+      - '.claude/**'
 
 permissions:
   contents: read
