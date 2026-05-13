@@ -1,5 +1,7 @@
 package com.tomaytotomato.data.solr.repository;
 
+import com.tomaytotomato.data.solr.query.GeoDistance;
+import com.tomaytotomato.data.solr.query.GeoPoint;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -20,6 +22,11 @@ class SolrQueryCreatorTest {
     double price;
     boolean inStock;
     String category;
+  }
+
+  static class Place {
+    String name;
+    GeoPoint location;
   }
 
   static class BookWithFieldMapping {
@@ -336,6 +343,46 @@ class SolrQueryCreatorTest {
     void subclassAnnotationOverridesParentAnnotation() {
       var resolver = SolrFieldNameResolver.forClass(OverridingSubDocument.class);
       assertThat(resolver.resolve("title")).isEqualTo("overridden_title");
+    }
+  }
+
+  private String createGeoQuery(String methodName, Object... params) {
+    var tree = new PartTree(methodName, Place.class);
+    var accessor = new StubParameterAccessor(params);
+    var creator = new SolrQueryCreator(tree, accessor);
+    return creator.createQuery().toSolrQuery().getQuery();
+  }
+
+  @Nested
+  class Near {
+
+    @Test
+    void findByLocationNearGeneratesGeoFilterQuery() {
+      var point = new GeoPoint(51.5074, -0.1278);
+      var distance = GeoDistance.kilometers(10.0);
+      assertThat(createGeoQuery("findByLocationNear", point, distance))
+          .isEqualTo("{!geofilt sfield=location pt=51.5074,-0.1278 d=10.0}");
+    }
+
+    @Test
+    void findByLocationNearWithMilesConvertsToKilometers() {
+      var point = new GeoPoint(40.7128, -74.0060);
+      var distance = GeoDistance.miles(5.0);
+      var result = createGeoQuery("findByLocationNear", point, distance);
+      assertThat(result).startsWith("{!geofilt sfield=location pt=40.7128,-74.006 d=");
+      assertThat(result).contains("8.04");
+    }
+  }
+
+  @Nested
+  class Within {
+
+    @Test
+    void findByLocationWithinGeneratesBboxQuery() {
+      var point = new GeoPoint(48.8566, 2.3522);
+      var distance = GeoDistance.kilometers(20.0);
+      assertThat(createGeoQuery("findByLocationWithin", point, distance))
+          .isEqualTo("{!bbox sfield=location pt=48.8566,2.3522 d=20.0}");
     }
   }
 

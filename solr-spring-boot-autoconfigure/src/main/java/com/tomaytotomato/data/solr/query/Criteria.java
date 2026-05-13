@@ -30,7 +30,16 @@ public class Criteria {
     AND, OR
   }
 
-  private record Predicate(String value, boolean negated) {
+  /**
+   * A single predicate clause. When {@code raw} is {@code true} the value is emitted verbatim
+   * without a {@code field:} prefix — used for function queries such as geofilt/bbox.
+   */
+  private record Predicate(String value, boolean negated, boolean raw) {
+
+    /** Convenience constructor for non-raw predicates (existing behaviour). */
+    Predicate(String value, boolean negated) {
+      this(value, negated, false);
+    }
   }
 
   private Criteria(String field) {
@@ -150,6 +159,36 @@ public class Criteria {
     return this;
   }
 
+  /**
+   * Matches documents whose field value (a spatial point) is within the given distance of the
+   * supplied point, using Solr's <em>geofilt</em> filter (circular radius, geodesic distance).
+   *
+   * <p>Renders as: {@code {!geofilt sfield=<field> pt=<lat,lon> d=<km>}}
+   */
+  public Criteria near(GeoPoint point, GeoDistance distance) {
+    var km = distance.toKilometers();
+    predicates.add(new Predicate(
+        "{!geofilt sfield=" + field + " pt=" + point.toSolrString() + " d=" + km + "}",
+        false,
+        true));
+    return this;
+  }
+
+  /**
+   * Matches documents whose field value (a spatial point) falls within the bounding box defined by
+   * the given distance from the supplied point, using Solr's <em>bbox</em> filter.
+   *
+   * <p>Renders as: {@code {!bbox sfield=<field> pt=<lat,lon> d=<km>}}
+   */
+  public Criteria within(GeoPoint point, GeoDistance distance) {
+    var km = distance.toKilometers();
+    predicates.add(new Predicate(
+        "{!bbox sfield=" + field + " pt=" + point.toSolrString() + " d=" + km + "}",
+        false,
+        true));
+    return this;
+  }
+
   // -----------------------------------------------------------------------
   // Chaining
   // -----------------------------------------------------------------------
@@ -225,7 +264,12 @@ public class Criteria {
       return field + ":*";
     }
     var rendered = predicates.stream()
-        .map(p -> p.negated() ? "-" + field + ":" + p.value() : field + ":" + p.value())
+        .map(p -> {
+          if (p.raw()) {
+            return p.value();
+          }
+          return p.negated() ? "-" + field + ":" + p.value() : field + ":" + p.value();
+        })
         .collect(Collectors.joining(" AND "));
 
     return Float.isNaN(boost) ? rendered : rendered + "^" + boost;

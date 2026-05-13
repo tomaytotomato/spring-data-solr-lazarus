@@ -1,6 +1,8 @@
 package com.tomaytotomato.data.solr.repository;
 
 import com.tomaytotomato.data.solr.query.Criteria;
+import com.tomaytotomato.data.solr.query.GeoDistance;
+import com.tomaytotomato.data.solr.query.GeoPoint;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
 import java.util.Collection;
 import java.util.Iterator;
@@ -67,6 +69,16 @@ public class SolrQueryCreator extends AbstractQueryCreator<SimpleQuery, Criteria
       case IS_NOT_NULL -> Criteria.where(field).isNotNull();
       case TRUE -> Criteria.where(field).is(true);
       case FALSE -> Criteria.where(field).is(false);
+      case NEAR -> {
+        var point = (GeoPoint) iterator.next();
+        var distance = (GeoDistance) iterator.next();
+        yield Criteria.where(field).near(point, distance);
+      }
+      case WITHIN -> {
+        var point = (GeoPoint) iterator.next();
+        var distance = (GeoDistance) iterator.next();
+        yield Criteria.where(field).within(point, distance);
+      }
       default -> throw new UnsupportedOperationException(
           "Unsupported query keyword: " + part.getType());
     };

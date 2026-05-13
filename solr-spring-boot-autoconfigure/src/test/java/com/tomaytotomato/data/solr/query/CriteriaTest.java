@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 class CriteriaTest {
 
@@ -285,6 +286,46 @@ class CriteriaTest {
           .or("status").is("trial")
           .toQueryString();
       assertThat(result).isEqualTo("status:active OR status:pending OR status:trial");
+    }
+  }
+
+  @Nested
+  class GeoQueries {
+
+    @Test
+    void nearGeneratesGeoFilterFunctionQuery() {
+      var point = new GeoPoint(51.5074, -0.1278);
+      var distance = GeoDistance.kilometers(10.0);
+      var result = Criteria.where("location").near(point, distance).toQueryString();
+      assertThat(result).isEqualTo("{!geofilt sfield=location pt=51.5074,-0.1278 d=10.0}");
+    }
+
+    @Test
+    void withinGeneratesBboxFunctionQuery() {
+      var point = new GeoPoint(51.5074, -0.1278);
+      var distance = GeoDistance.kilometers(10.0);
+      var result = Criteria.where("location").within(point, distance).toQueryString();
+      assertThat(result).isEqualTo("{!bbox sfield=location pt=51.5074,-0.1278 d=10.0}");
+    }
+
+    @Test
+    void nearConvertsMillesToKilometers() {
+      var point = new GeoPoint(40.7128, -74.0060);
+      var distance = GeoDistance.miles(10.0);
+      var result = Criteria.where("geo").near(point, distance).toQueryString();
+      // 10 miles = 16.0934 km
+      assertThat(result).contains("{!geofilt sfield=geo pt=40.7128,-74.006 d=");
+      assertThat(result).contains("16.09");
+    }
+
+    @Test
+    void nearCanBeChainedWithAndCriteria() {
+      var point = new GeoPoint(51.5074, -0.1278);
+      var distance = GeoDistance.kilometers(5.0);
+      var result = Criteria.where("category").is("restaurant")
+          .and(Criteria.where("location").near(point, distance))
+          .toQueryString();
+      assertThat(result).isEqualTo("category:restaurant AND {!geofilt sfield=location pt=51.5074,-0.1278 d=5.0}");
     }
   }
 
