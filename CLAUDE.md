@@ -19,8 +19,10 @@ mvn test -pl solr-spring-boot-autoconfigure -Dtest=SolrQueryCreatorTest  # singl
 mvn test -pl solr-spring-boot-autoconfigure -Dtest="SolrQueryCreatorTest#createsIsQueryForSimpleProperty"  # single test method
 ```
 
-Integration tests (`SolrIntegrationTest`) require Docker running — they use Testcontainers with a
-Solr 9 container and skip gracefully when Docker is unavailable.
+Integration tests run against both Solr 9 and Solr 10 via Testcontainers (`Solr9IntegrationTest`,
+`Solr10IntegrationTest`). They require Docker and skip gracefully when Docker is unavailable. The
+test logic lives in `AbstractSolrIntegrationTest`; each concrete subclass only specifies the Solr
+Docker image version.
 
 ## Module Structure
 

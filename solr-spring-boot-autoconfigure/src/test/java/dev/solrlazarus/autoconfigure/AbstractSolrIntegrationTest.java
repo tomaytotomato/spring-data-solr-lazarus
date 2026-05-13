@@ -8,31 +8,25 @@ import org.apache.solr.client.solrj.beans.Field;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.domain.PageRequest;
 import org.testcontainers.containers.SolrContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Testcontainers(disabledWithoutDocker = true)
-class SolrIntegrationTest {
+abstract class AbstractSolrIntegrationTest {
 
-  private static final String COLLECTION = "books";
+  static final String COLLECTION = "books";
 
-  @Container
-  static final SolrContainer solr = new SolrContainer(DockerImageName.parse("solr:9"))
-      .withCollection(COLLECTION);
+  abstract SolrContainer getSolrContainer();
 
   private ApplicationContextRunner contextRunner;
 
   @BeforeEach
   void setUp() {
+    var solr = getSolrContainer();
     contextRunner = new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(SolrAutoConfiguration.class))
         .withPropertyValues(
@@ -40,14 +34,7 @@ class SolrIntegrationTest {
             "spring.solr.default-collection=" + COLLECTION,
             "spring.solr.commit-mode=IMMEDIATE"
         );
-  }
 
-  /**
-   * Removes all documents from the collection after each test so tests do not bleed into each other.
-   * Uses a dedicated template rather than relying on the context runner to avoid lifecycle issues.
-   */
-  @BeforeEach
-  void cleanCollection() {
     contextRunner.run(ctx -> {
       var template = ctx.getBean(SolrTemplate.class);
       template.deleteByQuery(COLLECTION, "*:*");

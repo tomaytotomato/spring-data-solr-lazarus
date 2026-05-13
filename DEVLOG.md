@@ -210,6 +210,35 @@ showcases CRUD, highlighting, faceting, cursor paging, and statistics endpoints.
 
 **Tests:** 256 total (245 unit + 11 integration), 0 failures. JaCoCo coverage gate passes at >80%.
 
+### Session 5: Multi-Version Integration Tests (14:30–14:45)
+
+**Commit:** `0ae1300`
+
+Refactored integration tests to run against both Solr 9 and Solr 10. The original `SolrIntegrationTest`
+used a hardcoded `solr:9` image — a leftover from the initial scaffolding session, never upgraded to
+match the SolrJ 10 dependency. Rather than simply bumping to `solr:10`, took the smarter approach:
+prove backward compatibility by testing both versions.
+
+Extracted all test logic into `AbstractSolrIntegrationTest` (abstract base), then created two thin
+concrete subclasses — `Solr9IntegrationTest` and `Solr10IntegrationTest` — each specifying only the
+Docker image version. JUnit 5 discovers `@Nested` inner classes from superclasses, so all test
+groupings (SaveAndRetrieve, QueryOperations, DeleteOperations, HealthIndicator) are inherited
+automatically. Each subclass gets its own Testcontainers lifecycle.
+
+Also consolidated the two `@BeforeEach` methods (`setUp` and `cleanCollection`) into a single method
+to eliminate a latent ordering dependency — JUnit 5 does not guarantee execution order of multiple
+`@BeforeEach` methods within the same class.
+
+**Gotchas discovered:**
+- JUnit 5 DOES discover `@Nested` inner classes declared in abstract superclasses — `findNestedClasses`
+  traverses the full class hierarchy. This makes the abstract base + concrete subclass pattern viable
+  for multi-version Testcontainers testing.
+- `SolrContainer` in Testcontainers 2.0.5 is fully compatible with both `solr:9` and `solr:10` images.
+  Version-aware logic (Zookeeper startup commands at 9.7.0+), collection creation, and Jetty startup
+  detection all work unchanged across both versions.
+
+**Tests:** 267 total (245 unit + 22 integration), 0 failures. JaCoCo coverage gate passes at >80%.
+
 ---
 
 ## What's Next
