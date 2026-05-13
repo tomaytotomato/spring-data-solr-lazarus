@@ -199,8 +199,9 @@ public class SolrTemplate implements SolrOperations {
   @Override
   public long count(String collection, SolrQuery query) {
     try {
-      query.setRows(0);
-      QueryResponse response = solrClient.query(collection, query);
+      var countQuery = query.getCopy();
+      countQuery.setRows(0);
+      QueryResponse response = solrClient.query(collection, countQuery);
       return response.getResults().getNumFound();
     } catch (IOException | SolrServerException e) {
       throw new SolrException("Failed to count in collection: " + collection, e);
@@ -259,7 +260,6 @@ public class SolrTemplate implements SolrOperations {
     }
   }
 
-  @Override
   public SolrClient getSolrClient() {
     return solrClient;
   }

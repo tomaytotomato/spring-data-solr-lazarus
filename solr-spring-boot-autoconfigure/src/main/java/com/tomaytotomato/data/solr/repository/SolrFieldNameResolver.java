@@ -24,6 +24,10 @@ public class SolrFieldNameResolver {
     return new SolrFieldNameResolver(Map.of());
   }
 
+  static void clearCache() {
+    CACHE.clear();
+  }
+
   public String resolve(String propertyName) {
     return propertyToSolrField.getOrDefault(propertyName, propertyName);
   }
@@ -35,25 +39,30 @@ public class SolrFieldNameResolver {
   private static SolrFieldNameResolver buildMapping(Class<?> clazz) {
     var mapping = new HashMap<String, String>();
 
-    for (var field : clazz.getDeclaredFields()) {
-      var annotation = field.getAnnotation(Field.class);
-      if (annotation != null && !annotation.value().isEmpty() && !"#default".equals(annotation.value())) {
-        mapping.put(field.getName(), annotation.value());
-      }
-    }
-
-    for (var method : clazz.getDeclaredMethods()) {
-      var annotation = method.getAnnotation(Field.class);
-      if (annotation != null && !annotation.value().isEmpty() && !"#default".equals(annotation.value())) {
-        var name = method.getName();
-        if (name.startsWith("get") && name.length() > 3) {
-          var propertyName = Character.toLowerCase(name.charAt(3)) + name.substring(4);
-          mapping.put(propertyName, annotation.value());
-        } else if (name.startsWith("is") && name.length() > 2) {
-          var propertyName = Character.toLowerCase(name.charAt(2)) + name.substring(3);
-          mapping.put(propertyName, annotation.value());
+    var currentClass = clazz;
+    while (currentClass != null && currentClass != Object.class) {
+      for (var field : currentClass.getDeclaredFields()) {
+        var annotation = field.getAnnotation(Field.class);
+        if (annotation != null && !annotation.value().isEmpty() && !"#default".equals(annotation.value())) {
+          mapping.putIfAbsent(field.getName(), annotation.value());
         }
       }
+
+      for (var method : currentClass.getDeclaredMethods()) {
+        var annotation = method.getAnnotation(Field.class);
+        if (annotation != null && !annotation.value().isEmpty() && !"#default".equals(annotation.value())) {
+          var name = method.getName();
+          if (name.startsWith("get") && name.length() > 3) {
+            var propertyName = Character.toLowerCase(name.charAt(3)) + name.substring(4);
+            mapping.putIfAbsent(propertyName, annotation.value());
+          } else if (name.startsWith("is") && name.length() > 2) {
+            var propertyName = Character.toLowerCase(name.charAt(2)) + name.substring(3);
+            mapping.putIfAbsent(propertyName, annotation.value());
+          }
+        }
+      }
+
+      currentClass = currentClass.getSuperclass();
     }
 
     return new SolrFieldNameResolver(Map.copyOf(mapping));

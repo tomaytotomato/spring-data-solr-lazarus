@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.solr.client.solrj.beans.Field;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Sort;
@@ -284,6 +285,57 @@ class SolrQueryCreatorTest {
     void findByAuthorAndYearMapsToSolrFieldNames() {
       assertThat(createQueryWithMapping("findByAuthorAndYear", BookWithFieldMapping.class, "Picard", 2024))
           .isEqualTo("author_name:Picard AND publication_year:2024");
+    }
+  }
+
+  static class BaseDocument {
+    String id;
+    @Field("base_title")
+    String title;
+    @Field("created_at")
+    String createdAt;
+  }
+
+  static class SubDocument extends BaseDocument {
+    @Field("sub_category")
+    String category;
+  }
+
+  static class OverridingSubDocument extends BaseDocument {
+    @Field("overridden_title")
+    String title;
+  }
+
+  @Nested
+  class InheritedFieldAnnotationMapping {
+
+    @AfterEach
+    void clearCache() {
+      SolrFieldNameResolver.clearCache();
+    }
+
+    @Test
+    void resolvesFieldAnnotationFromSuperclass() {
+      var resolver = SolrFieldNameResolver.forClass(SubDocument.class);
+      assertThat(resolver.resolve("title")).isEqualTo("base_title");
+    }
+
+    @Test
+    void resolvesFieldAnnotationDeclaredOnSubclass() {
+      var resolver = SolrFieldNameResolver.forClass(SubDocument.class);
+      assertThat(resolver.resolve("category")).isEqualTo("sub_category");
+    }
+
+    @Test
+    void resolvesMultipleInheritedFields() {
+      var resolver = SolrFieldNameResolver.forClass(SubDocument.class);
+      assertThat(resolver.resolve("createdAt")).isEqualTo("created_at");
+    }
+
+    @Test
+    void subclassAnnotationOverridesParentAnnotation() {
+      var resolver = SolrFieldNameResolver.forClass(OverridingSubDocument.class);
+      assertThat(resolver.resolve("title")).isEqualTo("overridden_title");
     }
   }
 

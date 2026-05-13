@@ -27,6 +27,12 @@
       "type": "java.time.Duration",
       "description": "Request timeout for the Solr client.",
       "defaultValue": "60s"
+    },
+    {
+      "name": "spring.solr.commit-mode",
+      "type": "com.tomaytotomato.data.solr.CommitMode",
+      "description": "Controls whether SolrTemplate commits after each write operation. NONE relies on Solr's autoCommit; IMMEDIATE forces a hard commit after each write.",
+      "defaultValue": "none"
     }
   ]
 }
