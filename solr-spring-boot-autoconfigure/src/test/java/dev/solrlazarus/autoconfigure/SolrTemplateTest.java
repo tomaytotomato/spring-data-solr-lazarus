@@ -444,6 +444,76 @@ class SolrTemplateTest {
   }
 
   @Nested
+  class QueryForHighlightPage {
+
+    @Test
+    void returnsHighlightEntriesPairedWithEntities() throws Exception {
+      var entity = document("1");
+      var solrDoc = new org.apache.solr.common.SolrDocument();
+      solrDoc.setField("id", "1");
+      var docList = new SolrDocumentList();
+      docList.add(solrDoc);
+      docList.setNumFound(1L);
+
+      var highlights = Map.of("1", Map.of("title", List.of("a <em>match</em>")));
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList);
+      when(response.getHighlighting()).thenReturn(highlights);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var options = new HighlightOptions().addField("title");
+      var query = new SimpleQuery(Criteria.where("*").is("*")).setHighlightOptions(options);
+
+      var result = template.queryForHighlightPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getHighlighted()).hasSize(1);
+      assertThat(result.getHighlighted().get(0).entity()).isSameAs(entity);
+      assertThat(result.getHighlighted().get(0).highlights())
+          .containsKey("title")
+          .extractingByKey("title")
+          .asList()
+          .containsExactly("a <em>match</em>");
+    }
+
+    @Test
+    void returnsEmptyHighlightsWhenNoHighlightingInResponse() throws Exception {
+      var entity = document("2");
+      var solrDoc = new org.apache.solr.common.SolrDocument();
+      solrDoc.setField("id", "2");
+      var docList = new SolrDocumentList();
+      docList.add(solrDoc);
+      docList.setNumFound(1L);
+
+      var response = mock(QueryResponse.class);
+      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList);
+      when(response.getHighlighting()).thenReturn(null);
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+      var result = template.queryForHighlightPage(COLLECTION, query, TestDocument.class);
+
+      assertThat(result.getHighlighted()).hasSize(1);
+      assertThat(result.getHighlighted().get(0).highlights()).isEmpty();
+    }
+
+    @Test
+    void wrapsIOExceptionInSolrException() throws Exception {
+      when(solrClient.query(eq(COLLECTION), any(SolrParams.class)))
+          .thenThrow(new IOException("network error"));
+
+      var query = new SimpleQuery(Criteria.where("*").is("*"));
+
+      assertThatThrownBy(() -> template.queryForHighlightPage(COLLECTION, query, TestDocument.class))
+          .isInstanceOf(SolrException.class)
+          .hasMessageContaining(COLLECTION)
+          .hasCauseInstanceOf(IOException.class);
+    }
+  }
+
+  @Nested
   class QueryForFacetPage {
 
     @Test
