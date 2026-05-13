@@ -25,7 +25,8 @@ public class PartTreeSolrQuery implements RepositoryQuery {
   @Override
   public Object execute(Object[] parameters) {
     var accessor = new ParametersParameterAccessor(queryMethod.getParameters(), parameters);
-    var query = new SolrQueryCreator(tree, accessor).createQuery();
+    var resolver = SolrFieldNameResolver.forClass(domainType);
+    var query = new SolrQueryCreator(tree, accessor, resolver).createQuery();
     var collection = SolrDocumentResolver.resolveCollection(domainType);
 
     if (tree.isCountProjection()) {

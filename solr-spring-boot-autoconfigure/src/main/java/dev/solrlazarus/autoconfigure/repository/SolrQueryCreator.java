@@ -12,8 +12,15 @@ import org.springframework.data.repository.query.parser.PartTree;
 
 public class SolrQueryCreator extends AbstractQueryCreator<SimpleQuery, Criteria> {
 
+  private final SolrFieldNameResolver fieldNameResolver;
+
   public SolrQueryCreator(PartTree tree, ParameterAccessor parameters) {
+    this(tree, parameters, SolrFieldNameResolver.identity());
+  }
+
+  public SolrQueryCreator(PartTree tree, ParameterAccessor parameters, SolrFieldNameResolver fieldNameResolver) {
     super(tree, parameters);
+    this.fieldNameResolver = fieldNameResolver;
   }
 
   @Override
@@ -42,7 +49,7 @@ public class SolrQueryCreator extends AbstractQueryCreator<SimpleQuery, Criteria
 
   @SuppressWarnings("unchecked")
   private Criteria from(Part part, Iterator<Object> iterator) {
-    var field = part.getProperty().getSegment();
+    var field = fieldNameResolver.resolve(part.getProperty().getSegment());
     return switch (part.getType()) {
       case SIMPLE_PROPERTY -> Criteria.where(field).is(iterator.next());
       case NEGATING_SIMPLE_PROPERTY -> Criteria.where(field).isNot(iterator.next());

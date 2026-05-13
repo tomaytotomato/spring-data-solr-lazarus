@@ -3,6 +3,7 @@ package dev.solrlazarus.autoconfigure.repository;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.solr.client.solrj.beans.Field;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Sort;
@@ -20,10 +21,28 @@ class SolrQueryCreatorTest {
     String category;
   }
 
+  static class BookWithFieldMapping {
+    String id;
+    String title;
+    @Field("publication_year")
+    int year;
+    @Field("author_name")
+    String author;
+    double price;
+  }
+
   private String createQuery(String methodName, Object... params) {
     var tree = new PartTree(methodName, Product.class);
     var accessor = new StubParameterAccessor(params);
     var creator = new SolrQueryCreator(tree, accessor);
+    return creator.createQuery().toSolrQuery().getQuery();
+  }
+
+  private String createQueryWithMapping(String methodName, Class<?> entityClass, Object... params) {
+    var tree = new PartTree(methodName, entityClass);
+    var accessor = new StubParameterAccessor(params);
+    var fieldNameResolver = SolrFieldNameResolver.forClass(entityClass);
+    var creator = new SolrQueryCreator(tree, accessor, fieldNameResolver);
     return creator.createQuery().toSolrQuery().getQuery();
   }
 
@@ -231,6 +250,40 @@ class SolrQueryCreatorTest {
 
       assertThat(solrQuery.getQuery()).isEqualTo("title:Spring");
       assertThat(solrQuery.get("sort")).isEqualTo("price desc");
+    }
+  }
+
+  @Nested
+  class FieldAnnotationMapping {
+
+    @Test
+    void findByYearMapsToSolrFieldName() {
+      assertThat(createQueryWithMapping("findByYear", BookWithFieldMapping.class, 2024))
+          .isEqualTo("publication_year:2024");
+    }
+
+    @Test
+    void findByAuthorMapsToSolrFieldName() {
+      assertThat(createQueryWithMapping("findByAuthor", BookWithFieldMapping.class, "Picard"))
+          .isEqualTo("author_name:Picard");
+    }
+
+    @Test
+    void findByPriceUsesPropertyNameWhenNoFieldAnnotation() {
+      assertThat(createQueryWithMapping("findByPrice", BookWithFieldMapping.class, 29.99))
+          .isEqualTo("price:29.99");
+    }
+
+    @Test
+    void findByYearGreaterThanMapsToSolrFieldName() {
+      assertThat(createQueryWithMapping("findByYearGreaterThan", BookWithFieldMapping.class, 2020))
+          .isEqualTo("publication_year:{2020 TO *]");
+    }
+
+    @Test
+    void findByAuthorAndYearMapsToSolrFieldNames() {
+      assertThat(createQueryWithMapping("findByAuthorAndYear", BookWithFieldMapping.class, "Picard", 2024))
+          .isEqualTo("author_name:Picard AND publication_year:2024");
     }
   }
 
