@@ -4,7 +4,10 @@ import dev.solrlazarus.autoconfigure.mapping.SolrDocument;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.data.repository.config.AnnotationRepositoryConfigurationSource;
 import org.springframework.data.repository.config.RepositoryConfigurationExtensionSupport;
+import org.springframework.data.repository.config.RepositoryConfigurationSource;
 
 public class SolrRepositoryConfigurationExtension extends RepositoryConfigurationExtensionSupport {
 
@@ -31,5 +34,17 @@ public class SolrRepositoryConfigurationExtension extends RepositoryConfiguratio
   @Override
   protected Collection<Class<?>> getIdentifyingTypes() {
     return Collections.singleton(SolrRepository.class);
+  }
+
+  @Override
+  public void postProcess(BeanDefinitionBuilder builder, RepositoryConfigurationSource source) {
+    builder.addPropertyReference("solrTemplate", "solrTemplate");
+  }
+
+  @Override
+  public void postProcess(BeanDefinitionBuilder builder, AnnotationRepositoryConfigurationSource config) {
+    var attributes = config.getAttributes();
+    builder.addPropertyReference("solrTemplate",
+        attributes.getString("solrTemplateRef"));
   }
 }
