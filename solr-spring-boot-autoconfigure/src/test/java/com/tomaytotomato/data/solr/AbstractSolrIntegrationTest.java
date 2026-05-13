@@ -2,7 +2,10 @@ package com.tomaytotomato.data.solr;
 
 import com.tomaytotomato.data.solr.health.SolrHealthIndicator;
 import com.tomaytotomato.data.solr.query.Criteria;
+import com.tomaytotomato.data.solr.query.FacetOptions;
+import com.tomaytotomato.data.solr.query.HighlightOptions;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.solr.client.solrj.beans.Field;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +15,7 @@ import org.springframework.boot.health.contributor.Status;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.testcontainers.containers.SolrContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -261,6 +265,244 @@ abstract class AbstractSolrIntegrationTest {
 
         assertThat(health.getStatus()).isEqualTo(Status.UP);
         assertThat(health.getDetails()).containsKey("solr-version");
+      });
+    }
+  }
+
+  @Nested
+  class CursorPaging {
+
+    @Test
+    void firstPageHasRequestedSizeAndSignalsMoreResults() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("c1", "Alpha", "Author C", 2001),
+            book("c2", "Beta", "Author C", 2002),
+            book("c3", "Gamma", "Author C", 2003),
+            book("c4", "Delta", "Author C", 2004),
+            book("c5", "Epsilon", "Author C", 2005),
+            book("c6", "Zeta", "Author C", 2006),
+            book("c7", "Eta", "Author C", 2007),
+            book("c8", "Theta", "Author C", 2008),
+            book("c9", "Iota", "Author C", 2009),
+            book("c10", "Kappa", "Author C", 2010),
+            book("c11", "Lambda", "Author C", 2011)
+        ));
+
+        var query = new SimpleQuery(Criteria.where("*").expression("*"))
+            .setSort(Sort.by(Sort.Direction.ASC, "id"))
+            .setPageable(PageRequest.of(0, 3))
+            .setCursorMark("*");
+
+        var firstPage = template.queryWithCursor(COLLECTION, query, TestBook.class);
+
+        assertThat(firstPage.content()).hasSize(3);
+        assertThat(firstPage.hasMore()).isTrue();
+      });
+    }
+
+    @Test
+    void subsequentPageHasDifferentResultsThanFirstPage() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("p1", "Alpha", "Author P", 2001),
+            book("p2", "Beta", "Author P", 2002),
+            book("p3", "Gamma", "Author P", 2003),
+            book("p4", "Delta", "Author P", 2004),
+            book("p5", "Epsilon", "Author P", 2005),
+            book("p6", "Zeta", "Author P", 2006)
+        ));
+
+        var firstQuery = new SimpleQuery(Criteria.where("author_s").is("Author P"))
+            .setSort(Sort.by(Sort.Direction.ASC, "id"))
+            .setPageable(PageRequest.of(0, 3))
+            .setCursorMark("*");
+        var firstPage = template.queryWithCursor(COLLECTION, firstQuery, TestBook.class);
+
+        var secondQuery = new SimpleQuery(Criteria.where("author_s").is("Author P"))
+            .setSort(Sort.by(Sort.Direction.ASC, "id"))
+            .setPageable(PageRequest.of(0, 3))
+            .setCursorMark(firstPage.cursorMark());
+        var secondPage = template.queryWithCursor(COLLECTION, secondQuery, TestBook.class);
+
+        var firstIds = firstPage.content().stream().map(b -> b.id).toList();
+        var secondIds = secondPage.content().stream().map(b -> b.id).toList();
+        assertThat(secondIds).isNotEmpty();
+        assertThat(secondIds).doesNotContainAnyElementsOf(firstIds);
+      });
+    }
+
+    @Test
+    void traversingAllPagesYieldsTotalSeedCount() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("t1", "Book 1", "Author T", 2001),
+            book("t2", "Book 2", "Author T", 2002),
+            book("t3", "Book 3", "Author T", 2003),
+            book("t4", "Book 4", "Author T", 2004),
+            book("t5", "Book 5", "Author T", 2005),
+            book("t6", "Book 6", "Author T", 2006),
+            book("t7", "Book 7", "Author T", 2007),
+            book("t8", "Book 8", "Author T", 2008),
+            book("t9", "Book 9", "Author T", 2009),
+            book("t10", "Book 10", "Author T", 2010),
+            book("t11", "Book 11", "Author T", 2011)
+        ));
+
+        var allResults = new ArrayList<TestBook>();
+        var cursor = "*";
+        CursorResult<TestBook> page;
+
+        do {
+          var query = new SimpleQuery(Criteria.where("author_s").is("Author T"))
+              .setSort(Sort.by(Sort.Direction.ASC, "id"))
+              .setPageable(PageRequest.of(0, 4))
+              .setCursorMark(cursor);
+          page = template.queryWithCursor(COLLECTION, query, TestBook.class);
+          allResults.addAll(page.content());
+          cursor = page.cursorMark();
+        } while (page.hasMore());
+
+        assertThat(allResults).hasSize(11);
+      });
+    }
+  }
+
+  @Nested
+  class Faceting {
+
+    @Test
+    void fieldFacetCountsReflectSeedDistribution() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("f1", "Book 1", "Author A", 2001),
+            book("f2", "Book 2", "Author A", 2002),
+            book("f3", "Book 3", "Author A", 2003),
+            book("f4", "Book 4", "Author B", 2004),
+            book("f5", "Book 5", "Author B", 2005),
+            book("f6", "Book 6", "Author C", 2006)
+        ));
+
+        var query = new SimpleQuery(Criteria.where("*").expression("*"))
+            .setFacetOptions(new FacetOptions().addFacetOnField("author_s"));
+
+        var facetPage = template.queryForFacetPage(COLLECTION, query, TestBook.class);
+
+        assertThat(facetPage.getFacetFields()).containsKey("author_s");
+        var authorFacets = facetPage.getFacetField("author_s");
+        assertThat(authorFacets).extracting(e -> e.value())
+            .containsExactlyInAnyOrder("Author A", "Author B", "Author C");
+        assertThat(authorFacets).filteredOn(e -> e.value().equals("Author A"))
+            .singleElement()
+            .extracting(e -> e.count())
+            .isEqualTo(3L);
+        assertThat(authorFacets).filteredOn(e -> e.value().equals("Author B"))
+            .singleElement()
+            .extracting(e -> e.count())
+            .isEqualTo(2L);
+        assertThat(authorFacets).filteredOn(e -> e.value().equals("Author C"))
+            .singleElement()
+            .extracting(e -> e.count())
+            .isEqualTo(1L);
+      });
+    }
+
+    @Test
+    void queryFacetCountsMatchFilteredDocuments() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("q1", "Old Book", "Author Q", 1990),
+            book("q2", "Modern Book", "Author Q", 2005),
+            book("q3", "New Book", "Author Q", 2020)
+        ));
+
+        var query = new SimpleQuery(Criteria.where("*").expression("*"))
+            .setFacetOptions(new FacetOptions()
+                .addFacetQuery("year_i:[2000 TO *]")
+                .addFacetQuery("year_i:[* TO 1999]"));
+
+        var facetPage = template.queryForFacetPage(COLLECTION, query, TestBook.class);
+
+        assertThat(facetPage.getFacetQueries()).isNotEmpty();
+        assertThat(facetPage.getFacetQueries())
+            .filteredOn(e -> e.query().equals("year_i:[2000 TO *]"))
+            .singleElement()
+            .extracting(e -> e.count())
+            .isEqualTo(2L);
+        assertThat(facetPage.getFacetQueries())
+            .filteredOn(e -> e.query().equals("year_i:[* TO 1999]"))
+            .singleElement()
+            .extracting(e -> e.count())
+            .isEqualTo(1L);
+      });
+    }
+  }
+
+  @Nested
+  class Highlighting {
+
+    /**
+     * title_s is a Solr StrField (non-tokenised exact-match). The unified highlighter
+     * produces snippets when the query term exactly matches the stored field value.
+     * We therefore seed books whose title is exactly the query term.
+     */
+    @Test
+    void highlightedSnippetsContainTaggedTermForMatchingDocuments() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("h1", "Spring", "Author H", 2020),
+            book("h2", "Spring", "Author H", 2021),
+            book("h3", "Winter", "Author H", 2022)
+        ));
+
+        var query = new SimpleQuery(Criteria.where("title_s").is("Spring"))
+            .setHighlightOptions(new HighlightOptions()
+                .addField("title_s")
+                .preTag("<em>")
+                .postTag("</em>")
+                .fragsize(0));
+
+        var highlightPage = template.queryForHighlightPage(COLLECTION, query, TestBook.class);
+
+        assertThat(highlightPage.getContent()).hasSize(2);
+        var allSnippets = highlightPage.getHighlighted().stream()
+            .flatMap(entry -> entry.highlights().values().stream())
+            .flatMap(List::stream)
+            .toList();
+        assertThat(allSnippets).isNotEmpty();
+        assertThat(allSnippets).allSatisfy(snippet ->
+            assertThat(snippet).contains("<em>Spring</em>"));
+      });
+    }
+
+    @Test
+    void highlightPageContainsEntryForEachReturnedDocument() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("h4", "Spring", "Author H", 2020),
+            book("h5", "Winter", "Author H", 2021)
+        ));
+
+        var query = new SimpleQuery(Criteria.where("title_s").is("Spring"))
+            .setHighlightOptions(new HighlightOptions()
+                .addField("title_s")
+                .preTag("<em>")
+                .postTag("</em>")
+                .fragsize(0));
+
+        var highlightPage = template.queryForHighlightPage(COLLECTION, query, TestBook.class);
+
+        assertThat(highlightPage.getContent()).hasSize(1);
+        assertThat(highlightPage.getHighlighted()).hasSize(1);
+        assertThat(highlightPage.getHighlighted().getFirst().highlights())
+            .containsKey("title_s");
       });
     }
   }
