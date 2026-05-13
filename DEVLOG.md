@@ -114,13 +114,14 @@ Bumped from Spring Boot 3.5.0 → 4.0.6, Spring Data Commons 3.5.0 → 4.0.5, ta
 
 **Also fixed:** `SolrIntegrationTest.TestBook` was package-private — SolrJ's `DocumentObjectBinder` couldn't instantiate it. Made it `public`. This was a latent bug hidden because Docker wasn't running in earlier sessions.
 
-**Tests:** 158 total (147 unit + 11 integration), 0 failures. JDK 25 required to build.
+**Tests:** 158 total (147 unit + 11 integration), 0 failures. Full BUILD SUCCESS on JDK 25.0.3 (Temurin LTS).
+
+**Build verified:** `mvn clean verify` — all modules compile and pass on JDK 25, Spring Boot 4.0.6. `.java-version` pinned via jenv.
 
 ---
 
 ## What's Next
 
-- [ ] Install JDK 25 (`brew install --cask temurin@25`)
 - [ ] `@Query` annotation — raw Solr query strings on repository methods
 - [ ] `@Field` name mapping in derived queries
 - [ ] Faceting, highlighting, grouping support
