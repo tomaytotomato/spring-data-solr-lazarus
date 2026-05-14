@@ -530,6 +530,81 @@ path — same wrapping pattern, diminishing returns.
 - [x] **Geospatial query support** — `GeoPoint`, `GeoDistance`, `near()`, `within()` (`08812d8`)
 - [x] **Streaming expressions** — fluent builder + `SolrTemplate.stream()` (`8fcd0ea`)
 
+---
+
+## 2026-05-14 — Day 3: Sample App Overhaul & Data Curation Pipeline
+
+### Session 1: Curated Dataset & Full Feature Showcase (09:00–10:10)
+
+**Commits:** (uncommitted — pending ship)
+
+Built a Java-based data curation pipeline and overhauled the sample app to demonstrate every feature
+of the starter with realistic data. No Python — the entire pipeline is a new Maven module.
+
+**New module: `solr-spring-boot-data-curator`**
+
+A standalone Java pipeline that transforms a 7k-book Kaggle CSV into a curated 250-book JSON dataset:
+
+- `BookCurator` — main pipeline: read CSV → filter (description≥50 chars, year>0, rating>0) →
+  diversify by genre (round-robin allocation: `TARGET_TOTAL / genreCount` per genre, remainder to
+  largest) → enrich with geo/pricing → write JSON
+- `CategoryNormaliser` — regex-based genre mapping from messy LC subject headings to clean categories.
+  Order matters: specific compound genres (True Crime, Science Fiction, Historical Fiction) must
+  precede general keyword patterns, otherwise "True Crime" matches "Mystery" via the `crime` pattern
+- `BookshopLocations` — maps 17 genre categories to real-world bookshop coordinates (lat/lon/name)
+  for geospatial enrichment. Uses `Map.ofEntries()` for fail-fast on duplicate keys
+- `PricingStrategy` — category-specific price ranges with page count and rating multipliers
+- `CsvBookRecord` / `CuratedBook` — Jackson records for CSV parsing and JSON output
+
+Run with: `./mvnw compile exec:java -pl solr-spring-boot-data-curator`
+
+**Sample app overhaul:**
+
+Expanded `Book` entity from 10 to 15 fields — added subtitle, ratingsCount, location
+(LatLonPointSpatialField), locationName, and `@Score` for relevance scoring. `DataLoader` now reads
+from `curated-books.json` using Jackson 3.x (`tools.jackson` packages). `BookRepository` expanded
+with 12 derived query methods plus `@Query` annotations. `BookController` showcases every starter
+feature: CRUD, derived queries, `@Query` methods, highlighting (description + title), faceting
+(categories + author), cursor-based deep paging, geospatial (near/within), partial updates
+(set price, add category), and stats.
+
+Added custom `managed-schema.xml` with `LatLonPointSpatialField` for the `location` field, mounted
+into Docker Compose Solr container.
+
+**Integration tests:** 17 Testcontainers tests across 8 nested groups — DataLoading (count, field
+population), DerivedQueries (titleContaining, titleStartingWith, inStock, priceBetween, rating,
+yearBetween, countByAuthor, existsByTitle), CustomQueries, Highlighting, Faceting, CursorPaging,
+CrudOperations, and PartialUpdates.
+
+**Gotchas discovered:**
+- **SolrJ BindingException with schemaless Solr:** Testcontainers `SolrContainer` creates collections
+  using the `_default` configset (schemaless mode), NOT our custom `managed-schema.xml`. When the
+  `location` field is indexed as `"40.7484,-73.9856"`, schemaless mode auto-detects it as a
+  multiValued string. SolrJ then returns `ArrayList` instead of `String`, causing
+  `IllegalArgumentException: Can not set String field to ArrayList`. Fixed by pre-defining the field
+  via Solr's Schema API (HTTP POST to `/solr/books/schema`) in `@DynamicPropertySource`, which runs
+  after container start but before Spring context loads. The `_default` configset already has a
+  `location` field TYPE (LatLonPointSpatialField) — we just need to define the FIELD before data
+  indexing begins.
+- **Text analysis vs string matching in tests:** `findByTitleStartingWith("The")` on a `text_general`
+  field matches any document where a token starts with "the" (after lowercasing), not titles
+  beginning with "The". Similarly, `existsByTitle("This Title Surely Does Not Exist XYZ123")` returns
+  `true` because individual tokens ("title", "exist") match real book titles after analysis. Derived
+  query methods delegate to Solr's query parser, which respects the field's analyzer chain.
+- **Default pagination:** Solr returns 10 rows by default. `List<T>`-returning repository methods
+  don't override this, so `findByInStock(true).size() + findByInStock(false).size()` returns 20, not
+  250.
+- **Jackson 3.x packages in Spring Boot 4:** `DataLoader` must import `tools.jackson.core.type.TypeReference`
+  and `tools.jackson.databind.ObjectMapper`, not the `com.fasterxml.jackson` packages. Spring Boot
+  4.0.6 bundles Jackson 3.x.
+- **Kaggle CSV category fragmentation:** Categories are single LC subject headings with internal
+  commas (e.g., "Authors, English"). Splitting on commas shreds them into meaningless fragments.
+  Regex-based pattern matching is the correct approach.
+- **exec:java path resolution:** `exec-maven-plugin` resolves relative paths from the repository
+  root, not the module directory. Default paths must be prefixed with the module directory name.
+
+**Tests:** 414 total (363 unit + 51 integration), 0 failures. JaCoCo coverage gate passes at >80%.
+
 ### Remaining
 
 - [ ] Publish to Maven Central

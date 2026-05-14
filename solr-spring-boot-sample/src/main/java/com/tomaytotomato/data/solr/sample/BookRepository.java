@@ -12,11 +12,19 @@ public interface BookRepository extends SolrRepository<Book, String> {
 
   List<Book> findByTitleContaining(String title);
 
-  List<Book> findByGenre(String genre);
+  List<Book> findByTitleStartingWith(String prefix);
+
+  List<Book> findByInStock(boolean inStock);
 
   List<Book> findByPriceGreaterThan(double price);
 
+  List<Book> findByPriceLessThan(double price);
+
   List<Book> findByPriceBetween(double low, double high);
+
+  List<Book> findByRatingGreaterThanEqual(double rating);
+
+  List<Book> findByYearBetween(int from, int to);
 
   Page<Book> findByAuthorAndYearGreaterThan(String author, int year, Pageable pageable);
 
@@ -24,12 +32,12 @@ public interface BookRepository extends SolrRepository<Book, String> {
 
   boolean existsByTitle(String title);
 
-  @Query("title_s:?0 AND author_s:?1")
+  @Query("title_t:?0 AND author_s:?1")
   List<Book> findByTitleAndAuthorCustom(String title, String author);
 
-  @Query("genre_s:?0 AND price_d:[?1 TO ?2]")
-  List<Book> findByGenreAndPriceRange(String genre, double low, double high);
+  @Query("categories_ss:?0 AND price_d:[?1 TO ?2]")
+  List<Book> findByCategoryAndPriceRange(String category, double low, double high);
 
-  @Query(value = "genre_s:?0", count = true)
-  long countByGenreCustom(String genre);
+  @Query(value = "categories_ss:?0", count = true)
+  long countByCategoryCustom(String category);
 }

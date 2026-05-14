@@ -16,6 +16,7 @@
     <module>solr-spring-boot-autoconfigure</module>
     <module>solr-spring-boot-starter</module>
     <module>solr-spring-boot-sample</module>
+    <module>solr-spring-boot-data-curator</module>
   </modules>
 
   <properties>
