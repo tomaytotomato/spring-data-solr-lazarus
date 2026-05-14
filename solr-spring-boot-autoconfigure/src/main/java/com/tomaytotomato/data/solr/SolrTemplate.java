@@ -1,5 +1,6 @@
 package com.tomaytotomato.data.solr;
 
+import com.tomaytotomato.data.solr.mapping.SolrDocumentReader;
 import com.tomaytotomato.data.solr.mapping.SolrDocumentResolver;
 import com.tomaytotomato.data.solr.query.FacetFieldEntry;
 import com.tomaytotomato.data.solr.query.FacetQueryEntry;
@@ -21,6 +22,7 @@ import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
+import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.springframework.core.env.Environment;
@@ -90,7 +92,7 @@ public class SolrTemplate implements SolrOperations {
       var query = new SolrQuery("id:" + ClientUtils.escapeQueryChars(id));
       query.setRows(1);
       var response = solrClient.query(collection, query);
-      var beans = response.getBeans(type);
+      var beans = mapDocuments(response.getResults(), type);
       return beans.isEmpty() ? Optional.empty() : Optional.of(beans.getFirst());
     } catch (IOException | SolrServerException e) {
       throw new SolrException(
@@ -108,7 +110,7 @@ public class SolrTemplate implements SolrOperations {
   public <T> List<T> query(String collection, SolrQuery query, Class<T> type) {
     try {
       QueryResponse response = solrClient.query(collection, query);
-      return response.getBeans(type);
+      return mapDocuments(response.getResults(), type);
     } catch (IOException | SolrServerException e) {
       throw new SolrException("Failed to query collection: " + collection, e);
     }
@@ -119,9 +121,10 @@ public class SolrTemplate implements SolrOperations {
     try {
       var solrQuery = query.toSolrQuery();
       QueryResponse response = solrClient.query(collection, solrQuery);
-      var beans = response.getBeans(type);
-      long numFound = response.getResults().getNumFound();
-      Float maxScore = response.getResults().getMaxScore();
+      var docs = response.getResults();
+      var beans = mapDocuments(docs, type);
+      long numFound = docs.getNumFound();
+      Float maxScore = docs.getMaxScore();
 
       int start = solrQuery.getStart() != null ? solrQuery.getStart() : 0;
       int rows = solrQuery.getRows() != null ? solrQuery.getRows() : 10;
@@ -144,8 +147,8 @@ public class SolrTemplate implements SolrOperations {
     try {
       var solrQuery = query.toSolrQuery();
       QueryResponse response = solrClient.query(collection, solrQuery);
-      var beans = response.getBeans(type);
       var docs = response.getResults();
+      var beans = mapDocuments(docs, type);
       long numFound = docs.getNumFound();
       var highlighting = response.getHighlighting();
 
@@ -173,8 +176,9 @@ public class SolrTemplate implements SolrOperations {
     try {
       var solrQuery = query.toSolrQuery();
       QueryResponse response = solrClient.query(collection, solrQuery);
-      var beans = response.getBeans(type);
-      long numFound = response.getResults().getNumFound();
+      var docs = response.getResults();
+      var beans = mapDocuments(docs, type);
+      long numFound = docs.getNumFound();
 
       int start = solrQuery.getStart() != null ? solrQuery.getStart() : 0;
       int rows = solrQuery.getRows() != null ? solrQuery.getRows() : 10;
@@ -265,7 +269,7 @@ public class SolrTemplate implements SolrOperations {
     try {
       var solrQuery = query.toSolrQuery();
       QueryResponse response = solrClient.query(collection, solrQuery);
-      var beans = response.getBeans(type);
+      var beans = mapDocuments(response.getResults(), type);
       var nextCursorMark = response.getNextCursorMark();
       return CursorResult.of(beans, query.getCursorMark(), nextCursorMark);
     } catch (IOException | SolrServerException e) {
@@ -316,6 +320,13 @@ public class SolrTemplate implements SolrOperations {
 
   public SolrClient getSolrClient() {
     return solrClient;
+  }
+
+  private <T> List<T> mapDocuments(SolrDocumentList docs, Class<T> type) {
+    var reader = new SolrDocumentReader<>(type);
+    return docs.stream()
+        .map(reader::convert)
+        .toList();
   }
 
   private void commitIfImmediate(String collection) {

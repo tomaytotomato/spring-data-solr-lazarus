@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.beans.Field;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.SolrParams;
@@ -54,13 +55,27 @@ class SolrTemplateTest {
     return doc;
   }
 
-  static class TestDocument {
-    String id;
+  static org.apache.solr.common.SolrDocument solrDoc(String id) {
+    var doc = new org.apache.solr.common.SolrDocument();
+    doc.setField("id", id);
+    return doc;
+  }
+
+  static SolrDocumentList docList(org.apache.solr.common.SolrDocument... docs) {
+    var list = new SolrDocumentList();
+    for (var doc : docs) {
+      list.add(doc);
+    }
+    return list;
+  }
+
+  public static class TestDocument {
+    @Field public String id;
   }
 
   @SolrDocument(collection = "annotated-collection")
-  static class AnnotatedDocument {
-    String id;
+  public static class AnnotatedDocument {
+    @Field public String id;
   }
 
   @Nested
@@ -177,20 +192,20 @@ class SolrTemplateTest {
 
     @Test
     void returnsOptionalOfEntityWhenFound() throws Exception {
-      var entity = document("42");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList(solrDoc("42")));
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
       var result = template.findById(COLLECTION, "42", TestDocument.class);
 
-      assertThat(result).isPresent().contains(entity);
+      assertThat(result).isPresent();
+      assertThat(result.get().id).isEqualTo("42");
     }
 
     @Test
     void returnsOptionalEmptyWhenNotFound() throws Exception {
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(new SolrDocumentList());
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
       var result = template.findById(COLLECTION, "99", TestDocument.class);
@@ -225,21 +240,21 @@ class SolrTemplateTest {
     @Test
     void delegatesToSolrClientQueryAndReturnsBeans() throws Exception {
       var solrQuery = new SolrQuery("category:books");
-      var entity = document("10");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList(solrDoc("10")));
       when(solrClient.query(COLLECTION, solrQuery)).thenReturn(response);
 
       var result = template.query(COLLECTION, solrQuery, TestDocument.class);
 
-      assertThat(result).containsExactly(entity);
+      assertThat(result).hasSize(1);
+      assertThat(result.getFirst().id).isEqualTo("10");
     }
 
     @Test
     void returnsEmptyListWhenNoResultsFound() throws Exception {
       var solrQuery = new SolrQuery("category:nothing");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(new SolrDocumentList());
       when(solrClient.query(COLLECTION, solrQuery)).thenReturn(response);
 
       var result = template.query(COLLECTION, solrQuery, TestDocument.class);
@@ -442,15 +457,14 @@ class SolrTemplateTest {
 
     @Test
     void resolvesCollectionFromSolrDocumentAnnotation() throws Exception {
-      var entity = new AnnotatedDocument();
-      entity.id = "42";
       var response = mock(QueryResponse.class);
-      when(response.getBeans(AnnotatedDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList(solrDoc("42")));
       when(solrClient.query(eq("annotated-collection"), any(SolrParams.class))).thenReturn(response);
 
       var result = template.findById("42", AnnotatedDocument.class);
 
-      assertThat(result).isPresent().contains(entity);
+      assertThat(result).isPresent();
+      assertThat(result.get().id).isEqualTo("42");
     }
   }
 
@@ -545,9 +559,8 @@ class SolrTemplateTest {
 
     @Test
     void returnsContentWithNextCursorMarkAndHasMoreTrueWhenCursorAdvances() throws Exception {
-      var entity = document("1");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList(solrDoc("1")));
       when(response.getNextCursorMark()).thenReturn("AoE=");
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -556,16 +569,16 @@ class SolrTemplateTest {
 
       var result = template.queryWithCursor(COLLECTION, query, TestDocument.class);
 
-      assertThat(result.content()).containsExactly(entity);
+      assertThat(result.content()).hasSize(1);
+      assertThat(result.content().getFirst().id).isEqualTo("1");
       assertThat(result.cursorMark()).isEqualTo("AoE=");
       assertThat(result.hasMore()).isTrue();
     }
 
     @Test
     void hasMoreIsFalseWhenNextCursorMarkEqualsRequestCursorMark() throws Exception {
-      var entity = document("2");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(docList(solrDoc("2")));
       when(response.getNextCursorMark()).thenReturn("AoE=");
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -598,21 +611,19 @@ class SolrTemplateTest {
 
     @Test
     void resolvesCollectionFromSolrDocumentAnnotation() throws Exception {
-      var entity = new AnnotatedDocument();
-      entity.id = "1";
-      var docList = new SolrDocumentList();
-      docList.setNumFound(1L);
-      docList.setMaxScore(1.5f);
+      var results = docList(solrDoc("1"));
+      results.setNumFound(1L);
+      results.setMaxScore(1.5f);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(AnnotatedDocument.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(solrClient.query(eq("annotated-collection"), any(SolrParams.class))).thenReturn(response);
 
       var query = new SimpleQuery(Criteria.where("*").is("*"));
       var result = template.queryForPage(query, AnnotatedDocument.class, Pageable.ofSize(10));
 
-      assertThat(result.getContent()).containsExactly(entity);
+      assertThat(result.getContent()).hasSize(1);
+      assertThat(result.getContent().getFirst().id).isEqualTo("1");
       verify(solrClient).query(eq("annotated-collection"), any(SolrParams.class));
     }
   }
@@ -622,18 +633,13 @@ class SolrTemplateTest {
 
     @Test
     void returnsHighlightEntriesPairedWithEntities() throws Exception {
-      var entity = document("1");
-      var solrDoc = new org.apache.solr.common.SolrDocument();
-      solrDoc.setField("id", "1");
-      var docList = new SolrDocumentList();
-      docList.add(solrDoc);
-      docList.setNumFound(1L);
+      var results = docList(solrDoc("1"));
+      results.setNumFound(1L);
 
       var highlights = Map.of("1", Map.of("title", List.of("a <em>match</em>")));
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getHighlighting()).thenReturn(highlights);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -643,7 +649,7 @@ class SolrTemplateTest {
       var result = template.queryForHighlightPage(COLLECTION, query, TestDocument.class);
 
       assertThat(result.getHighlighted()).hasSize(1);
-      assertThat(result.getHighlighted().get(0).entity()).isSameAs(entity);
+      assertThat(result.getHighlighted().get(0).entity().id).isEqualTo("1");
       assertThat(result.getHighlighted().get(0).highlights())
           .containsKey("title")
           .extractingByKey("title")
@@ -653,16 +659,11 @@ class SolrTemplateTest {
 
     @Test
     void returnsEmptyHighlightsWhenNoHighlightingInResponse() throws Exception {
-      var entity = document("2");
-      var solrDoc = new org.apache.solr.common.SolrDocument();
-      solrDoc.setField("id", "2");
-      var docList = new SolrDocumentList();
-      docList.add(solrDoc);
-      docList.setNumFound(1L);
+      var results = docList(solrDoc("2"));
+      results.setNumFound(1L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getHighlighting()).thenReturn(null);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -675,17 +676,14 @@ class SolrTemplateTest {
 
     @Test
     void returnsEmptyHighlightsWhenDocumentIdIsNull() throws Exception {
-      var entity = document("3");
       var solrDoc = new org.apache.solr.common.SolrDocument();
-      var docList = new SolrDocumentList();
-      docList.add(solrDoc);
-      docList.setNumFound(1L);
+      var results = docList(solrDoc);
+      results.setNumFound(1L);
 
       var highlights = Map.of("3", Map.of("title", List.of("match")));
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getHighlighting()).thenReturn(highlights);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -825,17 +823,15 @@ class SolrTemplateTest {
 
     @Test
     void returnsFieldFacetsParsedFromResponse() throws Exception {
-      var entity = document("1");
-      var docList = new SolrDocumentList();
-      docList.setNumFound(1L);
+      var results = docList(solrDoc("1"));
+      results.setNumFound(1L);
 
       var genreField = new org.apache.solr.client.solrj.response.FacetField("genre");
       genreField.add("sci-fi", 42L);
       genreField.add("drama", 17L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getFacetFields()).thenReturn(List.of(genreField));
       when(response.getFacetQuery()).thenReturn(Map.of());
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
@@ -852,12 +848,11 @@ class SolrTemplateTest {
 
     @Test
     void returnsQueryFacetsParsedFromResponse() throws Exception {
-      var docList = new SolrDocumentList();
-      docList.setNumFound(0L);
+      var results = new SolrDocumentList();
+      results.setNumFound(0L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getFacetFields()).thenReturn(List.of());
       when(response.getFacetQuery()).thenReturn(Map.of("price:[0 TO 10]", 23, "price:[10 TO 100]", 87));
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
@@ -873,12 +868,11 @@ class SolrTemplateTest {
 
     @Test
     void returnsEmptyFacetsWhenNullFacetFields() throws Exception {
-      var docList = new SolrDocumentList();
-      docList.setNumFound(0L);
+      var results = new SolrDocumentList();
+      results.setNumFound(0L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDocument.class)).thenReturn(List.of());
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getFacetFields()).thenReturn(null);
       when(response.getFacetQuery()).thenReturn(null);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);

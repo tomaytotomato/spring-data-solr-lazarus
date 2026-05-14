@@ -25,7 +25,7 @@ class SolrMappingConverterTest {
 
     @Test
     void customConversionsAreAccessible() {
-      SolrReadConverter<String, LocalDate> readConverter = LocalDate::parse;
+      SolrDocumentConverter<String, LocalDate> readConverter = LocalDate::parse;
       var conversions = new SolrCustomConversions(List.of(readConverter));
 
       var converter = new SolrMappingConverter(conversions);
@@ -35,7 +35,7 @@ class SolrMappingConverterTest {
 
     @Test
     void convertersFromCustomConversionsAreRetrievable() {
-      SolrReadConverter<String, LocalDate> readConverter = LocalDate::parse;
+      SolrDocumentConverter<String, LocalDate> readConverter = LocalDate::parse;
       var conversions = new SolrCustomConversions(List.of(readConverter));
 
       var converter = new SolrMappingConverter(conversions);

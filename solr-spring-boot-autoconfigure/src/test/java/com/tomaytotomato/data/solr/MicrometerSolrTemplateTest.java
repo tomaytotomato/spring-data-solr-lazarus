@@ -52,8 +52,8 @@ class MicrometerSolrTemplateTest {
     return d;
   }
 
-  static class TestDoc {
-    String id;
+  public static class TestDoc {
+    @org.apache.solr.client.solrj.beans.Field public String id;
   }
 
   private Timer timerFor(String operation) {
@@ -70,7 +70,7 @@ class MicrometerSolrTemplateTest {
     void registersTimerAfterQueryOperation() throws Exception {
       var solrQuery = new SolrQuery("*:*");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(new SolrDocumentList());
       when(solrClient.query(COLLECTION, solrQuery)).thenReturn(response);
 
       template.query(COLLECTION, solrQuery, TestDoc.class);
@@ -81,15 +81,19 @@ class MicrometerSolrTemplateTest {
 
     @Test
     void queryResultPassesThroughTheTimerWrapper() throws Exception {
-      var entity = doc("1");
       var solrQuery = new SolrQuery("title:foo");
+      var solrDoc = new SolrDocument();
+      solrDoc.setField("id", "1");
+      var results = new SolrDocumentList();
+      results.add(solrDoc);
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of(entity));
+      when(response.getResults()).thenReturn(results);
       when(solrClient.query(COLLECTION, solrQuery)).thenReturn(response);
 
       var result = template.query(COLLECTION, solrQuery, TestDoc.class);
 
-      assertThat(result).containsExactly(entity);
+      assertThat(result).hasSize(1);
+      assertThat(result.getFirst().id).isEqualTo("1");
     }
 
     @Test
@@ -110,12 +114,11 @@ class MicrometerSolrTemplateTest {
 
     @Test
     void registersTimerAfterQueryForPageOperation() throws Exception {
-      var docList = new SolrDocumentList();
-      docList.setNumFound(0L);
+      var results = new SolrDocumentList();
+      results.setNumFound(0L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of());
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
       var query = new SimpleQuery(Criteria.where("*").is("*"));
@@ -127,18 +130,20 @@ class MicrometerSolrTemplateTest {
 
     @Test
     void queryForPageResultPassesThroughTimerWrapper() throws Exception {
-      var entity = doc("2");
-      var docList = new SolrDocumentList();
-      docList.setNumFound(1L);
+      var solrDoc = new SolrDocument();
+      solrDoc.setField("id", "2");
+      var results = new SolrDocumentList();
+      results.add(solrDoc);
+      results.setNumFound(1L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of(entity));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
       var result = template.queryForPage(COLLECTION, new SimpleQuery(Criteria.where("*").is("*")), TestDoc.class);
 
-      assertThat(result.getContent()).containsExactly(entity);
+      assertThat(result.getContent()).hasSize(1);
+      assertThat(result.getContent().getFirst().id).isEqualTo("2");
     }
   }
 
@@ -282,13 +287,12 @@ class MicrometerSolrTemplateTest {
     void registersTimerAfterQueryForHighlightPageOperation() throws Exception {
       var solrDoc = new SolrDocument();
       solrDoc.setField("id", "1");
-      var docList = new SolrDocumentList();
-      docList.add(solrDoc);
-      docList.setNumFound(1L);
+      var results = new SolrDocumentList();
+      results.add(solrDoc);
+      results.setNumFound(1L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of(doc("1")));
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getHighlighting()).thenReturn(Map.of());
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
 
@@ -304,12 +308,11 @@ class MicrometerSolrTemplateTest {
 
     @Test
     void registersTimerAfterQueryForFacetPageOperation() throws Exception {
-      var docList = new SolrDocumentList();
-      docList.setNumFound(0L);
+      var results = new SolrDocumentList();
+      results.setNumFound(0L);
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of());
-      when(response.getResults()).thenReturn(docList);
+      when(response.getResults()).thenReturn(results);
       when(response.getFacetFields()).thenReturn(List.of());
       when(response.getFacetQuery()).thenReturn(Map.of());
       when(solrClient.query(eq(COLLECTION), any(SolrParams.class))).thenReturn(response);
@@ -328,7 +331,7 @@ class MicrometerSolrTemplateTest {
     void timerHasCorrectOperationAndCollectionTags() throws Exception {
       var solrQuery = new SolrQuery("*:*");
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(new SolrDocumentList());
       when(solrClient.query(COLLECTION, solrQuery)).thenReturn(response);
 
       template.query(COLLECTION, solrQuery, TestDoc.class);
@@ -347,7 +350,7 @@ class MicrometerSolrTemplateTest {
       var solrQuery2 = new SolrQuery("*:*");
 
       var response = mock(QueryResponse.class);
-      when(response.getBeans(TestDoc.class)).thenReturn(List.of());
+      when(response.getResults()).thenReturn(new SolrDocumentList());
       when(solrClient.query(any(String.class), any(SolrParams.class))).thenReturn(response);
 
       template.query("books", solrQuery1, TestDoc.class);
