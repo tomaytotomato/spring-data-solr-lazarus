@@ -13,9 +13,11 @@ Sometimes you wonder if a project is really dead or is just taking a break in th
 Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has
 been resurrected from the bit void.
 
-Rebuilt from scratch using Claude code with some analysis and human guidance.
+This project was driven by several things:
 
-Integration-tested against both Solr 9 and Solr 10.
+- Solr is still an active and popular search DB.
+- How can we rebuild a spring-boot-starter library using Claude code and human input.
+- Don't vibe it, instead spec it out and verify it works
 
 ## Features
 
@@ -51,27 +53,36 @@ Integration-tested against both Solr 9 and Solr 10.
 
 ![ytho.png](assets/ytho.png)
 
-Projects often go stale or die because of burnout, lack of time/resources or changing priorities.
+Projects often go stale or die because of developer burnout, lack of time/resources or changing
+priorities from the community.
 
-What if we could prevent this from happening by using LLMs to take on the maintenance burden? The
-gaps in API drift would be managed, old dependencies and security issues would be resolved, and the
+What if we could prevent this from happening by using LLMs to take on the maintenance burden?
+
+The gaps in API drift would be managed, old dependencies and security issues would be resolved, and
+the
 project would stay alive and useful for the community.
 
-The original Spring Data Solr was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/) 
-and [archived in September 2023](https://github.com/spring-attic/spring-data-solr). 
+The original Spring Data Solr
+was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/)
+and [archived in September 2023](https://github.com/spring-attic/spring-data-solr).
 
-The world moved on; Solr got updates, SolrJ was updated and Spring Boot went into version 3. 
+After this the world moved on; Solr got updates, SolrJ was updated and Spring Boot went into version
+3.
 
-Lazarus is a clean reimplementation with a baseline in the latest versions of all these libraries. 
+However there was no pathway for anyone to continue to use Spring boot with Solr in a project.
+
+Lazarus is a clean re-implementation with a baseline in the latest versions of all these libraries.
 
 This is not a fork of the OG library.
 
-See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison.
+See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
+project.
 
 ## Module Structure
 
 ```
 solr-spring-boot-autoconfigure  : all the real code: auto-configuration, template, queries, repos
+solr-spring-boot-data-curator   : a utility tool for building data for the sample app (not important)
 solr-spring-boot-starter        : thin POM that consumers depend on
 solr-spring-boot-sample         : demo Spring Boot app with Docker Compose support
 ```
@@ -82,7 +93,7 @@ solr-spring-boot-sample         : demo Spring Boot app with Docker Compose suppo
 
 ![jean-luc-java.png](jean-luc-java.png)
 
-- JDK 21+ 
+- JDK 21+
 - Docker (for integration tests and the sample app)
 - No Maven installation needed : the project includes the Maven Wrapper
 
@@ -98,14 +109,15 @@ Note: I would recommend jenv for managing your JDK per project https://www.jenv.
 
 ### Run the Sample App
 
-With Docker running:
-
 ```bash
 ./mvnw spring-boot:run -pl solr-spring-boot-sample
 ```
 
-This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book
-CRUD endpoints and Actuator health at `/actuator/health`.
+This auto-starts a Solr 10 container with a pre-created `books` collection. 
+
+The app exposes book REST endpoints `/api/books`
+
+There is also the usual Actuator health endpoints at `/actuator/health`.
 
 ### Use in Your Project
 

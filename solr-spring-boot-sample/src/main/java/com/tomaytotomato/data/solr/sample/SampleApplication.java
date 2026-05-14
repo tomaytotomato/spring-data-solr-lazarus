@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @EnableSolrRepositories
 public class SampleApplication {
 
-  static void main(String[] args) {
+  public static void main(String[] args) {
     SpringApplication.run(SampleApplication.class, args);
   }
 }
