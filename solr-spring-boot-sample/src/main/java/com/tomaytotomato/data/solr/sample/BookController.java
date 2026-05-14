@@ -3,9 +3,12 @@ package com.tomaytotomato.data.solr.sample;
 import com.tomaytotomato.data.solr.CursorResult;
 import com.tomaytotomato.data.solr.FacetPage;
 import com.tomaytotomato.data.solr.HighlightPage;
+import com.tomaytotomato.data.solr.PartialUpdate;
 import com.tomaytotomato.data.solr.SolrTemplate;
 import com.tomaytotomato.data.solr.query.Criteria;
 import com.tomaytotomato.data.solr.query.FacetOptions;
+import com.tomaytotomato.data.solr.query.GeoDistance;
+import com.tomaytotomato.data.solr.query.GeoPoint;
 import com.tomaytotomato.data.solr.query.HighlightOptions;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
 import java.util.List;
@@ -17,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/books")
 public class BookController {
+
+  private static final String COLLECTION = "books";
 
   private final BookRepository bookRepository;
   private final SolrTemplate solrTemplate;
@@ -68,14 +74,14 @@ public class BookController {
     return bookRepository.findByTitleContaining(q);
   }
 
+  @GetMapping("/starting-with")
+  public List<Book> startingWith(@RequestParam String prefix) {
+    return bookRepository.findByTitleStartingWith(prefix);
+  }
+
   @GetMapping("/by-author")
   public List<Book> findByAuthor(@RequestParam String author) {
     return bookRepository.findByAuthor(author);
-  }
-
-  @GetMapping("/by-genre")
-  public List<Book> findByGenre(@RequestParam String genre) {
-    return bookRepository.findByGenre(genre);
   }
 
   @GetMapping("/by-author-after")
@@ -84,14 +90,29 @@ public class BookController {
     return bookRepository.findByAuthorAndYearGreaterThan(author, year, pageable);
   }
 
-  @GetMapping("/expensive")
-  public List<Book> findExpensive(@RequestParam(defaultValue = "40") double minPrice) {
-    return bookRepository.findByPriceGreaterThan(minPrice);
+  @GetMapping("/in-stock")
+  public List<Book> findInStock() {
+    return bookRepository.findByInStock(true);
+  }
+
+  @GetMapping("/top-rated")
+  public List<Book> findTopRated(@RequestParam(defaultValue = "4.0") double minRating) {
+    return bookRepository.findByRatingGreaterThanEqual(minRating);
   }
 
   @GetMapping("/price-range")
   public List<Book> findByPriceRange(@RequestParam double low, @RequestParam double high) {
     return bookRepository.findByPriceBetween(low, high);
+  }
+
+  @GetMapping("/by-year-range")
+  public List<Book> findByYearRange(@RequestParam int from, @RequestParam int to) {
+    return bookRepository.findByYearBetween(from, to);
+  }
+
+  @GetMapping("/cheap")
+  public List<Book> findCheap(@RequestParam(defaultValue = "15") double maxPrice) {
+    return bookRepository.findByPriceLessThan(maxPrice);
   }
 
   // --- @Query Annotation ---
@@ -101,30 +122,31 @@ public class BookController {
     return bookRepository.findByTitleAndAuthorCustom(title, author);
   }
 
-  @GetMapping("/genre-price")
-  public List<Book> findByGenreAndPrice(@RequestParam String genre,
+  @GetMapping("/category-price")
+  public List<Book> findByCategoryAndPrice(@RequestParam String category,
       @RequestParam double low, @RequestParam double high) {
-    return bookRepository.findByGenreAndPriceRange(genre, low, high);
+    return bookRepository.findByCategoryAndPriceRange(category, low, high);
   }
 
-  @GetMapping("/count-genre")
-  public Map<String, Long> countByGenre(@RequestParam String genre) {
-    return Map.of("genre", (long) genre.length(), "count", bookRepository.countByGenreCustom(genre));
+  @GetMapping("/count-category")
+  public Map<String, Object> countByCategory(@RequestParam String category) {
+    return Map.of("category", category, "count", bookRepository.countByCategoryCustom(category));
   }
 
   // --- Highlighting ---
 
   @GetMapping("/highlight")
   public HighlightPage<Book> searchWithHighlights(@RequestParam String q) {
-    var query = new SimpleQuery(Criteria.where("title_s").contains(q));
+    var query = new SimpleQuery(Criteria.where("description_t").contains(q));
     query.setPageable(PageRequest.of(0, 10));
     query.setHighlightOptions(new HighlightOptions()
-        .addField("title_s")
-        .preTag("<b>")
-        .postTag("</b>")
+        .addField("description_t")
+        .addField("title_t")
+        .preTag("<em>")
+        .postTag("</em>")
         .snippets(2)
         .fragsize(200));
-    return solrTemplate.queryForHighlightPage("books", query, Book.class);
+    return solrTemplate.queryForHighlightPage(COLLECTION, query, Book.class);
   }
 
   // --- Faceting ---
@@ -132,15 +154,17 @@ public class BookController {
   @GetMapping("/facets")
   public FacetPage<Book> searchWithFacets(
       @RequestParam(defaultValue = "*") String q) {
-    var criteria = q.equals("*") ? Criteria.where("*").expression("*") : Criteria.where("title_s").contains(q);
+    var criteria = q.equals("*")
+        ? Criteria.where("*").expression("*")
+        : Criteria.where("description_t").contains(q);
     var query = new SimpleQuery(criteria);
     query.setPageable(PageRequest.of(0, 10));
     query.setFacetOptions(new FacetOptions()
-        .addFacetOnField("genre_s")
+        .addFacetOnField("categories_ss")
         .addFacetOnField("author_s")
         .minCount(1)
         .limit(20));
-    return solrTemplate.queryForFacetPage("books", query, Book.class);
+    return solrTemplate.queryForFacetPage(COLLECTION, query, Book.class);
   }
 
   // --- Cursor-based Deep Paging ---
@@ -148,11 +172,55 @@ public class BookController {
   @GetMapping("/cursor")
   public CursorResult<Book> cursorPage(
       @RequestParam(defaultValue = "*") String cursorMark,
-      @RequestParam(defaultValue = "3") int pageSize) {
+      @RequestParam(defaultValue = "10") int pageSize) {
     var query = new SimpleQuery(Criteria.where("*").expression("*"));
     query.setCursorMark(cursorMark);
     query.setPageable(PageRequest.of(0, pageSize, Sort.by("id").ascending()));
-    return solrTemplate.queryWithCursor("books", query, Book.class);
+    return solrTemplate.queryWithCursor(COLLECTION, query, Book.class);
+  }
+
+  // --- Geospatial ---
+
+  @GetMapping("/nearby")
+  public List<Book> findNearby(
+      @RequestParam double lat, @RequestParam double lon,
+      @RequestParam(defaultValue = "50") double radiusKm) {
+    var query = new SimpleQuery(
+        Criteria.where("location").near(
+            new GeoPoint(lat, lon),
+            GeoDistance.kilometers(radiusKm)));
+    query.setPageable(PageRequest.of(0, 20));
+    return solrTemplate.queryForPage(COLLECTION, query, Book.class).getContent();
+  }
+
+  @GetMapping("/within")
+  public List<Book> findWithinBounds(
+      @RequestParam double lat, @RequestParam double lon,
+      @RequestParam(defaultValue = "100") double radiusKm) {
+    var query = new SimpleQuery(
+        Criteria.where("location").within(
+            new GeoPoint(lat, lon),
+            GeoDistance.kilometers(radiusKm)));
+    query.setPageable(PageRequest.of(0, 20));
+    return solrTemplate.queryForPage(COLLECTION, query, Book.class).getContent();
+  }
+
+  // --- Partial Updates ---
+
+  @PatchMapping("/{id}/price")
+  public ResponseEntity<Void> updatePrice(@PathVariable String id,
+      @RequestParam double price) {
+    var update = new PartialUpdate(id).set("price_d", price);
+    solrTemplate.savePartialUpdate(COLLECTION, update);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{id}/category")
+  public ResponseEntity<Void> addCategory(@PathVariable String id,
+      @RequestParam String category) {
+    var update = new PartialUpdate(id).add("categories_ss", category);
+    solrTemplate.savePartialUpdate(COLLECTION, update);
+    return ResponseEntity.noContent().build();
   }
 
   // --- Statistics ---
@@ -161,7 +229,7 @@ public class BookController {
   public Map<String, Object> stats() {
     return Map.of(
         "totalBooks", bookRepository.count(),
-        "authorCount", bookRepository.countByAuthor("Craig Walls"),
-        "hasSpringInAction", bookRepository.existsByTitle("Spring in Action"));
+        "inStock", bookRepository.findByInStock(true).size(),
+        "outOfStock", bookRepository.findByInStock(false).size());
   }
 }

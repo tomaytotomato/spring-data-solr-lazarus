@@ -1,8 +1,13 @@
 package com.tomaytotomato.data.solr.sample;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,26 +16,50 @@ public class DataLoader implements CommandLineRunner {
   private static final Logger log = LoggerFactory.getLogger(DataLoader.class);
 
   private final BookRepository bookRepository;
+  private final ObjectMapper objectMapper;
 
-  public DataLoader(BookRepository bookRepository) {
+  public DataLoader(BookRepository bookRepository, ObjectMapper objectMapper) {
     this.bookRepository = bookRepository;
+    this.objectMapper = objectMapper;
   }
 
   @Override
-  public void run(String... args) {
+  public void run(String... args) throws IOException {
     bookRepository.deleteAll();
 
-    bookRepository.save(new Book("1", "Spring Boot in Action", "Craig Walls", 2016, 39.99, "technology"));
-    bookRepository.save(new Book("2", "Spring in Action", "Craig Walls", 2022, 49.99, "technology"));
-    bookRepository.save(new Book("3", "Effective Java", "Joshua Bloch", 2018, 45.00, "technology"));
-    bookRepository.save(new Book("4", "Clean Code", "Robert C. Martin", 2008, 35.50, "technology"));
-    bookRepository.save(new Book("5", "The Pragmatic Programmer", "David Thomas", 2019, 42.00, "technology"));
-    bookRepository.save(new Book("6", "Dune", "Frank Herbert", 1965, 12.99, "fiction"));
-    bookRepository.save(new Book("7", "Neuromancer", "William Gibson", 1984, 14.99, "fiction"));
-    bookRepository.save(new Book("8", "Foundation", "Isaac Asimov", 1951, 11.99, "fiction"));
-    bookRepository.save(new Book("9", "The Art of War", "Sun Tzu", -500, 9.99, "philosophy"));
-    bookRepository.save(new Book("10", "Meditations", "Marcus Aurelius", 180, 8.99, "philosophy"));
+    var resource = new ClassPathResource("curated-books.json");
+    var jsonBooks = objectMapper.readValue(
+        resource.getInputStream(), new TypeReference<List<JsonBook>>() {});
 
-    log.info("Loaded {} sample books into Solr", bookRepository.count());
+    var books = jsonBooks.stream().map(this::toBook).toList();
+    books.forEach(bookRepository::save);
+
+    log.info("Loaded {} curated books into Solr", books.size());
   }
+
+  private Book toBook(JsonBook json) {
+    var book = new Book();
+    book.setId(json.id());
+    book.setTitle(json.title());
+    book.setSubtitle(json.subtitle());
+    book.setAuthor(json.author());
+    book.setDescription(json.description());
+    book.setCategories(json.categories());
+    book.setRating(json.rating());
+    book.setRatingsCount(json.ratingsCount());
+    book.setYear(json.year());
+    book.setPages(json.pages());
+    book.setPrice(json.price());
+    book.setInStock(json.inStock());
+    book.setLocation(json.latitude() + "," + json.longitude());
+    book.setLocationName(json.locationName());
+    return book;
+  }
+
+  record JsonBook(
+      String id, String title, String subtitle, String author,
+      String description, List<String> categories, double rating,
+      int ratingsCount, int year, int pages, double price,
+      boolean inStock, double latitude, double longitude, String locationName
+  ) {}
 }
