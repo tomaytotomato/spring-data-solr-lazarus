@@ -21,22 +21,19 @@ This project was driven by several things:
 
 ## Features
 
-- **Auto-configuration** : drop-in `SolrClient` (standalone or SolrCloud) and `SolrTemplate` beans
-- **Spring Data repositories** : `SolrRepository` with full CRUD, pagination, and sorting
-- **Derived query methods** : 18 keywords (Is, Containing, Between, GreaterThan, In, IsNull, True,
-  etc.)
-- **`@Field` name mapping** : derived queries respect SolrJ `@Field` annotations (the #1 pain point
-  from the original, fixed from day one)
-- **`@Query` annotation** : raw Solr query strings with `?0`, `?1` parameter substitution
-- **Highlighting** : `HighlightPage` with configurable pre/post tags, snippets, and fragment size
-- **Faceting** : `FacetPage` with field facets, query facets, min count, and limit control
-- **Cursor-based deep paging** : `CursorResult` wrapping Solr's cursorMark for efficient deep
-  iteration
-- **Partial updates** : atomic set/add/increment operations via `PartialUpdate`
-- **Health indicator** : Spring Boot Actuator integration, pings collection or falls back to admin
-  info
-- **Criteria API** : fluent query builder:
-  `Criteria.where("title").contains("spring").and("price").greaterThan(10)`
+| Feature                      | Description            | Key Capabilities                                                                                       |
+|:-----------------------------|:-----------------------|:-------------------------------------------------------------------------------------------------------|
+| **Auto-configuration**       | Drop-in Bean Support   | Automatically configures `SolrClient` (Standalone or SolrCloud) and `SolrTemplate`.                    |
+| **Spring Data Repositories** | `SolrRepository`       | Full **CRUD** support, including built-in pagination and sorting.                                      |
+| **Derived Query Methods**    | Keyword-based queries  | Supports **18 keywords** (e.g., `Is`, `Containing`, `Between`, `GreaterThan`, `In`, `IsNull`, `True`). |
+| **@Field Name Mapping**      | Annotation respect     | Derived queries respect SolrJ `@Field` annotations; fixes original mapping pain points.                |
+| **@Query Annotation**        | Manual Query Strings   | Supports raw Solr queries with `?0`, `?1` parameter substitution.                                      |
+| **Highlighting**             | `HighlightPage`        | Configurable pre/post tags, snippets, and fragment size.                                               |
+| **Faceting**                 | `FacetPage`            | Includes field facets, query facets, min count, and limit control.                                     |
+| **Deep Paging**              | Cursor-based iteration | `CursorResult` wraps Solr's `cursorMark` for efficient deep iteration.                                 |
+| **Partial Updates**          | Atomic Operations      | Supports `set`, `add`, and `increment` operations via `PartialUpdate`.                                 |
+| **Health Indicator**         | Spring Boot Actuator   | Integration that pings collections or falls back to admin info.                                        |
+| **Criteria API**             | Fluent Query Builder   | Programmatic builder: `Criteria.where("title").contains("spring").and("price").greaterThan(10)`.       |
 
 ## Tech Stack
 
@@ -67,6 +64,7 @@ was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-f
 and [archived in September 2023](https://github.com/spring-attic/spring-data-solr).
 
 After this the world moved on; Solr got updates, SolrJ was updated and Spring Boot went into version
+
 3.
 
 However there was no pathway for anyone to continue to use Spring boot with Solr in a project.
@@ -113,7 +111,7 @@ Note: I would recommend jenv for managing your JDK per project https://www.jenv.
 ./mvnw spring-boot:run -pl solr-spring-boot-sample
 ```
 
-This auto-starts a Solr 10 container with a pre-created `books` collection. 
+This auto-starts a Solr 10 container with a pre-created `books` collection.
 
 The app exposes book REST endpoints `/api/books`
 
