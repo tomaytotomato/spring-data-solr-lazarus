@@ -213,10 +213,10 @@ class MicrometerSolrTemplateTest {
 
     @Test
     void saveExceptionPropagatesThroughTimerWrapper() throws Exception {
-      var entity = doc("1");
-      when(solrClient.addBean(COLLECTION, entity)).thenThrow(new SolrServerException("boom"));
+      when(solrClient.add(eq(COLLECTION), any(org.apache.solr.common.SolrInputDocument.class)))
+          .thenThrow(new SolrServerException("boom"));
 
-      assertThatThrownBy(() -> template.save(COLLECTION, entity))
+      assertThatThrownBy(() -> template.save(COLLECTION, doc("1")))
           .isInstanceOf(SolrException.class)
           .hasCauseInstanceOf(SolrServerException.class);
 

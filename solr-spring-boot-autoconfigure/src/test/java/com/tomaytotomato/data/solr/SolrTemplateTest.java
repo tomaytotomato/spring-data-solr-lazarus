@@ -14,6 +14,7 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.beans.Field;
 import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.common.SolrDocumentList;
+import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.util.NamedList;
@@ -82,18 +83,18 @@ class SolrTemplateTest {
   class Save {
 
     @Test
-    void delegatesToSolrClientAddBean() throws Exception {
+    void delegatesToSolrClientAdd() throws Exception {
       var entity = document("1");
       var result = template.save(COLLECTION, entity);
-      verify(solrClient).addBean(COLLECTION, entity);
+      verify(solrClient).add(eq(COLLECTION), any(SolrInputDocument.class));
       assertThat(result).isSameAs(entity);
     }
 
     @Test
     void wrapsIOExceptionInSolrException() throws Exception {
-      var entity = document("1");
-      when(solrClient.addBean(COLLECTION, entity)).thenThrow(new IOException("network error"));
-      assertThatThrownBy(() -> template.save(COLLECTION, entity))
+      when(solrClient.add(eq(COLLECTION), any(SolrInputDocument.class)))
+          .thenThrow(new IOException("network error"));
+      assertThatThrownBy(() -> template.save(COLLECTION, document("1")))
           .isInstanceOf(SolrException.class)
           .hasMessageContaining(COLLECTION)
           .hasCauseInstanceOf(IOException.class);
@@ -101,10 +102,9 @@ class SolrTemplateTest {
 
     @Test
     void wrapsSolrServerExceptionInSolrException() throws Exception {
-      var entity = document("1");
-      when(solrClient.addBean(COLLECTION, entity))
+      when(solrClient.add(eq(COLLECTION), any(SolrInputDocument.class)))
           .thenThrow(new SolrServerException("server error"));
-      assertThatThrownBy(() -> template.save(COLLECTION, entity))
+      assertThatThrownBy(() -> template.save(COLLECTION, document("1")))
           .isInstanceOf(SolrException.class)
           .hasCauseInstanceOf(SolrServerException.class);
     }
@@ -114,29 +114,31 @@ class SolrTemplateTest {
   class SaveAll {
 
     @Test
-    void delegatesToSolrClientAddBeans() throws Exception {
+    @SuppressWarnings("unchecked")
+    void delegatesToSolrClientAddWithDocumentList() throws Exception {
       var entities = List.of(document("1"), document("2"));
       var result = template.saveAll(COLLECTION, entities);
-      verify(solrClient).addBeans(COLLECTION, entities);
+      verify(solrClient).add(eq(COLLECTION), any(List.class));
       assertThat(result).containsExactlyElementsOf(entities);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void wrapsIOExceptionInSolrException() throws Exception {
-      var entities = List.of(document("1"));
-      when(solrClient.addBeans(COLLECTION, entities)).thenThrow(new IOException("network error"));
-      assertThatThrownBy(() -> template.saveAll(COLLECTION, entities))
+      when(solrClient.add(eq(COLLECTION), any(List.class)))
+          .thenThrow(new IOException("network error"));
+      assertThatThrownBy(() -> template.saveAll(COLLECTION, List.of(document("1"))))
           .isInstanceOf(SolrException.class)
           .hasMessageContaining(COLLECTION)
           .hasCauseInstanceOf(IOException.class);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void wrapsSolrServerExceptionInSolrException() throws Exception {
-      var entities = List.of(document("1"));
-      when(solrClient.addBeans(COLLECTION, entities))
+      when(solrClient.add(eq(COLLECTION), any(List.class)))
           .thenThrow(new SolrServerException("server error"));
-      assertThatThrownBy(() -> template.saveAll(COLLECTION, entities))
+      assertThatThrownBy(() -> template.saveAll(COLLECTION, List.of(document("1"))))
           .isInstanceOf(SolrException.class)
           .hasCauseInstanceOf(SolrServerException.class);
     }
@@ -447,7 +449,7 @@ class SolrTemplateTest {
 
       var result = template.save(entity);
 
-      verify(solrClient).addBean("annotated-collection", entity);
+      verify(solrClient).add(eq("annotated-collection"), any(SolrInputDocument.class));
       assertThat(result).isSameAs(entity);
     }
   }
@@ -499,31 +501,26 @@ class SolrTemplateTest {
 
     @Test
     void commitsAfterSaveWhenModeIsImmediate() throws Exception {
-      var entity = document("1");
+      immediateTemplate.save(COLLECTION, document("1"));
 
-      immediateTemplate.save(COLLECTION, entity);
-
-      verify(solrClient).addBean(COLLECTION, entity);
+      verify(solrClient).add(eq(COLLECTION), any(SolrInputDocument.class));
       verify(solrClient).commit(COLLECTION);
     }
 
     @Test
     void doesNotCommitAfterSaveWhenModeIsNone() throws Exception {
-      var entity = document("1");
+      template.save(COLLECTION, document("1"));
 
-      template.save(COLLECTION, entity);
-
-      verify(solrClient).addBean(COLLECTION, entity);
+      verify(solrClient).add(eq(COLLECTION), any(SolrInputDocument.class));
       verify(solrClient, never()).commit(COLLECTION);
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void commitsAfterSaveAllWhenModeIsImmediate() throws Exception {
-      var entities = List.of(document("1"), document("2"));
+      immediateTemplate.saveAll(COLLECTION, List.of(document("1"), document("2")));
 
-      immediateTemplate.saveAll(COLLECTION, entities);
-
-      verify(solrClient).addBeans(COLLECTION, entities);
+      verify(solrClient).add(eq(COLLECTION), any(List.class));
       verify(solrClient).commit(COLLECTION);
     }
 

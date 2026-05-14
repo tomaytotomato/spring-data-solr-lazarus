@@ -34,23 +34,23 @@ TrieField, TrieIntField, TrieLongField, TrieFloatField, TrieDoubleField, TrieDat
 
 SolrJ's default binary protocol (`JavaBinCodec`) supports these native Java types on the wire:
 
-| Tag | Java Type | Notes |
-|-----|-----------|-------|
-| NULL | `null` | |
-| BOOL_TRUE/FALSE | `Boolean` | |
-| BYTE | `Byte` | |
-| SHORT | `Short` | |
-| INT | `Integer` | |
-| LONG | `Long` | |
-| FLOAT | `Float` | |
-| DOUBLE | `Double` | |
-| DATE | `java.util.Date` | Stored as epoch millis (long). NOT `java.time.Instant`. |
-| STR | `String` | UTF-8 encoded |
-| BYTEARR | `byte[]` | |
-| ARR | `ArrayList` | Used for multiValued fields |
-| MAP | `LinkedHashMap` | |
-| SOLRDOC | `SolrDocument` | For nested/child documents |
-| ENUM_FIELD_VALUE | `EnumFieldValue` | For EnumFieldType |
+| Tag              | Java Type        | Notes                                                   |
+|------------------|------------------|---------------------------------------------------------|
+| NULL             | `null`           |                                                         |
+| BOOL_TRUE/FALSE  | `Boolean`        |                                                         |
+| BYTE             | `Byte`           |                                                         |
+| SHORT            | `Short`          |                                                         |
+| INT              | `Integer`        |                                                         |
+| LONG             | `Long`           |                                                         |
+| FLOAT            | `Float`          |                                                         |
+| DOUBLE           | `Double`         |                                                         |
+| DATE             | `java.util.Date` | Stored as epoch millis (long). NOT `java.time.Instant`. |
+| STR              | `String`         | UTF-8 encoded                                           |
+| BYTEARR          | `byte[]`         |                                                         |
+| ARR              | `ArrayList`      | Used for multiValued fields                             |
+| MAP              | `LinkedHashMap`  |                                                         |
+| SOLRDOC          | `SolrDocument`   | For nested/child documents                              |
+| ENUM_FIELD_VALUE | `EnumFieldValue` | For EnumFieldType                                       |
 
 Any Java type NOT in this list cannot survive the SolrJ wire protocol natively, which is why
 field types like `UUIDField` return `String` even though they could theoretically return `UUID`.
@@ -61,93 +61,102 @@ field types like `UUIDField` return `String` even though they could theoreticall
 
 ### Numeric Field Types
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.IntPointField` | `pint` | `Integer` | `Integer`, `int`, any `Number` | No (returns `List<Integer>` when multiValued) | None | Both |
-| `solr.LongPointField` | `plong` | `Long` | `Long`, `long`, any `Number` | No | None | Both |
-| `solr.FloatPointField` | `pfloat` | `Float` | `Float`, `float`, any `Number` | No | None | Both |
-| `solr.DoublePointField` | `pdouble` | `Double` | `Double`, `double`, any `Number` | No | None | Both |
+| Solr Class              | Common Schema Name | Java Read Type | Java Write Type                  | multiValued                                   | Write/Read Asymmetry | Solr 9/10 |
+|-------------------------|--------------------|----------------|----------------------------------|-----------------------------------------------|----------------------|-----------|
+| `solr.IntPointField`    | `pint`             | `Integer`      | `Integer`, `int`, any `Number`   | No (returns `List<Integer>` when multiValued) | None                 | Both      |
+| `solr.LongPointField`   | `plong`            | `Long`         | `Long`, `long`, any `Number`     | No                                            | None                 | Both      |
+| `solr.FloatPointField`  | `pfloat`           | `Float`        | `Float`, `float`, any `Number`   | No                                            | None                 | Both      |
+| `solr.DoublePointField` | `pdouble`          | `Double`       | `Double`, `double`, any `Number` | No                                            | None                 | Both      |
 
 **Notes:**
-- All PointField types use Lucene's dimensional points for indexing, enabling efficient range queries.
+
+- All PointField types use Lucene's dimensional points for indexing, enabling efficient range
+  queries.
 - Requires `docValues="true"` for sorting on single-valued fields.
-- `toNativeType()` calls `((Number) val).intValue()` (etc.), so any `Number` subclass is accepted on write.
+- `toNativeType()` calls `((Number) val).intValue()` (etc.), so any `Number` subclass is accepted on
+  write.
 
 ### Deprecated Numeric Field Types (Trie-based)
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | Replacement | Solr 9/10 |
-|---|---|---|---|---|---|
-| `solr.TrieIntField` | `tint` | `Integer` | `Integer` | `IntPointField` | Solr 9 only (deprecated); removed in 10 |
-| `solr.TrieLongField` | `tlong` | `Long` | `Long` | `LongPointField` | Solr 9 only (deprecated); removed in 10 |
-| `solr.TrieFloatField` | `tfloat` | `Float` | `Float` | `FloatPointField` | Solr 9 only (deprecated); removed in 10 |
-| `solr.TrieDoubleField` | `tdouble` | `Double` | `Double` | `DoublePointField` | Solr 9 only (deprecated); removed in 10 |
-| `solr.TrieDateField` | `tdate` | `java.util.Date` | `java.util.Date`, ISO-8601 `String` | `DatePointField` | Solr 9 only (deprecated); removed in 10 |
-| `solr.TrieField` | (base class) | varies | varies | Point variants | Solr 9 only (deprecated); removed in 10 |
+| Solr Class             | Common Schema Name | Java Read Type   | Java Write Type                     | Replacement        | Solr 9/10                               |
+|------------------------|--------------------|------------------|-------------------------------------|--------------------|-----------------------------------------|
+| `solr.TrieIntField`    | `tint`             | `Integer`        | `Integer`                           | `IntPointField`    | Solr 9 only (deprecated); removed in 10 |
+| `solr.TrieLongField`   | `tlong`            | `Long`           | `Long`                              | `LongPointField`   | Solr 9 only (deprecated); removed in 10 |
+| `solr.TrieFloatField`  | `tfloat`           | `Float`          | `Float`                             | `FloatPointField`  | Solr 9 only (deprecated); removed in 10 |
+| `solr.TrieDoubleField` | `tdouble`          | `Double`         | `Double`                            | `DoublePointField` | Solr 9 only (deprecated); removed in 10 |
+| `solr.TrieDateField`   | `tdate`            | `java.util.Date` | `java.util.Date`, ISO-8601 `String` | `DatePointField`   | Solr 9 only (deprecated); removed in 10 |
+| `solr.TrieField`       | (base class)       | varies           | varies                              | Point variants     | Solr 9 only (deprecated); removed in 10 |
 
 ### Date Field Types
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.DatePointField` | `pdate` | `java.util.Date` | `java.util.Date`, ISO-8601 `String` | No | **Yes**: Write accepts ISO-8601 strings like `"2024-01-15T10:30:00Z"` or `Date` objects. Read always returns `java.util.Date`. SolrJ wire format stores as epoch millis. | Both |
-| `solr.DateRangeField` | `daterange` | `String` | `String` (ISO-8601 or range syntax `[NOW-1DAY TO NOW]`) | No | **Yes**: NOT in KNOWN_TYPES, so always returns `String` via `toExternal()`. Input and output are both strings, but the read format is always ISO-8601 with `Z` suffix for point-in-time values. | Both |
+| Solr Class            | Common Schema Name | Java Read Type   | Java Write Type                                         | multiValued | Write/Read Asymmetry                                                                                                                                                                            | Solr 9/10 |
+|-----------------------|--------------------|------------------|---------------------------------------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `solr.DatePointField` | `pdate`            | `java.util.Date` | `java.util.Date`, ISO-8601 `String`                     | No          | **Yes**: Write accepts ISO-8601 strings like `"2024-01-15T10:30:00Z"` or `Date` objects. Read always returns `java.util.Date`. SolrJ wire format stores as epoch millis.                        | Both      |
+| `solr.DateRangeField` | `daterange`        | `String`         | `String` (ISO-8601 or range syntax `[NOW-1DAY TO NOW]`) | No          | **Yes**: NOT in KNOWN_TYPES, so always returns `String` via `toExternal()`. Input and output are both strings, but the read format is always ISO-8601 with `Z` suffix for point-in-time values. | Both      |
 
-**Critical asymmetry:** `DatePointField` returns `java.util.Date`; `DateRangeField` returns `String`.
+**Critical asymmetry:** `DatePointField` returns `java.util.Date`; `DateRangeField` returns
+`String`.
 Despite both representing dates, they have completely different Java return types. If you switch a
 schema field from `DatePointField` to `DateRangeField`, your Java code will break.
 
 ### String & Text Field Types
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.StrField` | `string` | `String` | `String` | No | None | Both |
-| `solr.TextField` | `text_general`, `text_en`, etc. | `String` | `String` | No | None. Analyzers (tokenizers, filters) only affect indexing; stored value is the original string. | Both |
-| `solr.SortableTextField` | `text_gen_sort` | `String` | `String` | No | None. Extends `TextField`; adds docValues support on first 1024 chars (configurable via `maxCharsForDocValues`). | Both |
-| `solr.CollationField` | `collatedstring` | `String` | `String` | No | None | Both |
-| `solr.ICUCollationField` | `collatedstring_icu` | `String` | `String` | No | None. Requires `analysis-extras` contrib/module. | Both |
+| Solr Class               | Common Schema Name              | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry                                                                                             | Solr 9/10 |
+|--------------------------|---------------------------------|----------------|-----------------|-------------|------------------------------------------------------------------------------------------------------------------|-----------|
+| `solr.StrField`          | `string`                        | `String`       | `String`        | No          | None                                                                                                             | Both      |
+| `solr.TextField`         | `text_general`, `text_en`, etc. | `String`       | `String`        | No          | None. Analyzers (tokenizers, filters) only affect indexing; stored value is the original string.                 | Both      |
+| `solr.SortableTextField` | `text_gen_sort`                 | `String`       | `String`        | No          | None. Extends `TextField`; adds docValues support on first 1024 chars (configurable via `maxCharsForDocValues`). | Both      |
+| `solr.CollationField`    | `collatedstring`                | `String`       | `String`        | No          | None                                                                                                             | Both      |
+| `solr.ICUCollationField` | `collatedstring_icu`            | `String`       | `String`        | No          | None. Requires `analysis-extras` contrib/module.                                                                 | Both      |
 
 ### Boolean Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.BoolField` | `boolean` | `Boolean` | `Boolean`, `String` (`"true"`, `"1"`, `"t"`, `"T"` = true; anything else = false) | No | **Minor**: Write accepts various truthy string representations; read always returns `Boolean`. | Both |
+| Solr Class       | Common Schema Name | Java Read Type | Java Write Type                                                                   | multiValued | Write/Read Asymmetry                                                                           | Solr 9/10 |
+|------------------|--------------------|----------------|-----------------------------------------------------------------------------------|-------------|------------------------------------------------------------------------------------------------|-----------|
+| `solr.BoolField` | `boolean`          | `Boolean`      | `Boolean`, `String` (`"true"`, `"1"`, `"t"`, `"T"` = true; anything else = false) | No          | **Minor**: Write accepts various truthy string representations; read always returns `Boolean`. | Both      |
 
 ### UUID Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.UUIDField` | `uuid` | `String` | `String` (or `"NEW"` to auto-generate) | No | **Yes**: Extends `StrField` and is NOT in KNOWN_TYPES as a separate entry, but inherits `StrField`'s `toObject()` returning `String`. You write a UUID string, you get a UUID string back. The value is lowercased internally. `java.util.UUID` objects are NOT returned because `UUID` is not a JavaBin wire type. | Both |
+| Solr Class       | Common Schema Name | Java Read Type | Java Write Type                        | multiValued | Write/Read Asymmetry                                                                                                                                                                                                                                                                                                | Solr 9/10 |
+|------------------|--------------------|----------------|----------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `solr.UUIDField` | `uuid`             | `String`       | `String` (or `"NEW"` to auto-generate) | No          | **Yes**: Extends `StrField` and is NOT in KNOWN_TYPES as a separate entry, but inherits `StrField`'s `toObject()` returning `String`. You write a UUID string, you get a UUID string back. The value is lowercased internally. `java.util.UUID` objects are NOT returned because `UUID` is not a JavaBin wire type. | Both      |
 
 ### Binary Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.BinaryField` | `binary` | `byte[]` | `byte[]`, `ByteBuffer`, Base64 `String` | No | **Yes**: `toObject()` returns `ByteBuffer` wrapping the bytes. `DocumentObjectBinder` has special handling: if the target field is `ByteBuffer`, it wraps `byte[]` into `ByteBuffer`. JavaBin wire sends as `byte[]` (tag BYTEARR). Actual type received depends on response format: JavaBin = `byte[]`, then `DocumentObjectBinder` may wrap to `ByteBuffer`. | Both |
+| Solr Class         | Common Schema Name | Java Read Type | Java Write Type                         | multiValued | Write/Read Asymmetry                                                                                                                                                                                                                                                                                                                                           | Solr 9/10 |
+|--------------------|--------------------|----------------|-----------------------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `solr.BinaryField` | `binary`           | `byte[]`       | `byte[]`, `ByteBuffer`, Base64 `String` | No          | **Yes**: `toObject()` returns `ByteBuffer` wrapping the bytes. `DocumentObjectBinder` has special handling: if the target field is `ByteBuffer`, it wraps `byte[]` into `ByteBuffer`. JavaBin wire sends as `byte[]` (tag BYTEARR). Actual type received depends on response format: JavaBin = `byte[]`, then `DocumentObjectBinder` may wrap to `ByteBuffer`. | Both      |
 
 ### Enum Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.EnumFieldType` | `enum` | `EnumFieldValue` | `String` (the enum label) or `Integer` (the ordinal) | No | **Yes, significant**: Write a string label like `"Critical"`. Read back an `EnumFieldValue` object containing both `intValue` (sort ordinal) and `stringValue` (label). `EnumFieldValue.toString()` returns the string label. JavaBin has a dedicated `ENUM_FIELD_VALUE` tag. | Both |
-| `solr.EnumField` | (deprecated) | `EnumFieldValue` | `String` | No | Same as above | Solr 9 only; removed in 10 |
+| Solr Class           | Common Schema Name | Java Read Type   | Java Write Type                                      | multiValued | Write/Read Asymmetry                                                                                                                                                                                                                                                          | Solr 9/10                  |
+|----------------------|--------------------|------------------|------------------------------------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| `solr.EnumFieldType` | `enum`             | `EnumFieldValue` | `String` (the enum label) or `Integer` (the ordinal) | No          | **Yes, significant**: Write a string label like `"Critical"`. Read back an `EnumFieldValue` object containing both `intValue` (sort ordinal) and `stringValue` (label). `EnumFieldValue.toString()` returns the string label. JavaBin has a dedicated `ENUM_FIELD_VALUE` tag. | Both                       |
+| `solr.EnumField`     | (deprecated)       | `EnumFieldValue` | `String`                                             | No          | Same as above                                                                                                                                                                                                                                                                 | Solr 9 only; removed in 10 |
 
 **`EnumFieldValue` structure:**
+
 ```java
 public class EnumFieldValue implements Comparable<EnumFieldValue>, Serializable {
-    private Integer intValue;   // sort ordinal
-    private String stringValue; // display label
-    public String toString() { return stringValue; }
+
+  private Integer intValue;   // sort ordinal
+  private String stringValue; // display label
+
+  public String toString() {
+	return stringValue;
+  }
 }
 ```
 
 ### Spatial Field Types
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.LatLonPointSpatialField` | `location` | `String` (`"lat,lon"`) | `String` (`"lat,lon"`) | Yes (supports multi-valued) | **Subtle**: NOT in KNOWN_TYPES, returns `String` via `toExternal()`. Precision is 7 decimal places (~1.4cm). Input format `"lat,lon"`, output format `"lat,lon"` (may differ in trailing zeros). | Both |
-| `solr.SpatialRecursivePrefixTreeFieldType` | `location_rpt` | `String` (WKT or `"lat lon"`) | `String` (WKT format or `"lat,lon"`) | Yes | NOT in KNOWN_TYPES; returns `String` via `toExternal()`. Stored value is the original WKT/coordinate string. | Both |
-| `solr.RptWithGeometrySpatialField` | `location_rpt_geom` | `String` | `String` (WKT) | Yes | Same as RPT but also stores original geometry for retrieval. Returns `String`. | Both |
-| `solr.BBoxField` | `bbox` | `String` | `String` (`"minX minY maxX maxY"`) | No | NOT in KNOWN_TYPES. Uses sub-fields internally (4 doubles + 1 boolean for dateline crossing). Returns `String` via `toExternal()`. | Both |
-| `solr.PointType` | `point` | `String` | `String` (`"x,y"` or `"x,y,z"` for n-dimensional) | No | NOT in KNOWN_TYPES; returns comma-separated coordinate `String`. | Both |
+| Solr Class                                 | Common Schema Name  | Java Read Type                | Java Write Type                                   | multiValued                 | Write/Read Asymmetry                                                                                                                                                                             | Solr 9/10 |
+|--------------------------------------------|---------------------|-------------------------------|---------------------------------------------------|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `solr.LatLonPointSpatialField`             | `location`          | `String` (`"lat,lon"`)        | `String` (`"lat,lon"`)                            | Yes (supports multi-valued) | **Subtle**: NOT in KNOWN_TYPES, returns `String` via `toExternal()`. Precision is 7 decimal places (~1.4cm). Input format `"lat,lon"`, output format `"lat,lon"` (may differ in trailing zeros). | Both      |
+| `solr.SpatialRecursivePrefixTreeFieldType` | `location_rpt`      | `String` (WKT or `"lat lon"`) | `String` (WKT format or `"lat,lon"`)              | Yes                         | NOT in KNOWN_TYPES; returns `String` via `toExternal()`. Stored value is the original WKT/coordinate string.                                                                                     | Both      |
+| `solr.RptWithGeometrySpatialField`         | `location_rpt_geom` | `String`                      | `String` (WKT)                                    | Yes                         | Same as RPT but also stores original geometry for retrieval. Returns `String`.                                                                                                                   | Both      |
+| `solr.BBoxField`                           | `bbox`              | `String`                      | `String` (`"minX minY maxX maxY"`)                | No                          | NOT in KNOWN_TYPES. Uses sub-fields internally (4 doubles + 1 boolean for dateline crossing). Returns `String` via `toExternal()`.                                                               | Both      |
+| `solr.PointType`                           | `point`             | `String`                      | `String` (`"x,y"` or `"x,y,z"` for n-dimensional) | No                          | NOT in KNOWN_TYPES; returns comma-separated coordinate `String`.                                                                                                                                 | Both      |
 
 **Important:** All spatial types return `String` through SolrJ. None of them are in KNOWN_TYPES,
 so they always go through `toExternal()`. If you need structured lat/lon values, you must parse the
@@ -155,11 +164,12 @@ returned string yourself.
 
 ### Dense Vector Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.DenseVectorField` | `knn_vector` | FLOAT32: `List<Float>` / BYTE: `List<Number>` (containing `Integer` values) | `List<Float>`, `float[]`, JSON array of numbers | **Never** multi-valued | **Yes**: Write accepts `float[]` or `List<Float>`. FLOAT32 read returns `List<Float>` (not `float[]`). BYTE encoding reads return `List<Number>` where each element is `Integer` (widened from byte). | Both, with Solr 10 enhancements |
+| Solr Class              | Common Schema Name | Java Read Type                                                              | Java Write Type                                 | multiValued            | Write/Read Asymmetry                                                                                                                                                                                  | Solr 9/10                       |
+|-------------------------|--------------------|-----------------------------------------------------------------------------|-------------------------------------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| `solr.DenseVectorField` | `knn_vector`       | FLOAT32: `List<Float>` / BYTE: `List<Number>` (containing `Integer` values) | `List<Float>`, `float[]`, JSON array of numbers | **Never** multi-valued | **Yes**: Write accepts `float[]` or `List<Float>`. FLOAT32 read returns `List<Float>` (not `float[]`). BYTE encoding reads return `List<Number>` where each element is `Integer` (widened from byte). | Both, with Solr 10 enhancements |
 
 **Solr 10 changes for DenseVectorField:**
+
 - Added support for scalar and binary quantized vectors (reduced memory)
 - Can index primitive `float[]` directly via JavaBin (SOLR-17948)
 - New query types: `SeededKnnVectorQuery`, `PatienceKnnVectorQuery`
@@ -167,31 +177,33 @@ returned string yourself.
 
 ### Currency Field Type
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Write/Read Asymmetry | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.CurrencyFieldType` | `currency` | `String` (`"amount,CODE"`) | `String` (`"100.50,USD"`) | No | NOT in KNOWN_TYPES. Stored as string `"amount,currencyCode"`. Internally uses two sub-fields (amount as `Long`, code as `String`), but the stored parent field is a `String`. If no currency code provided on write, appends the configured `defaultCurrency`. | Both |
-| `solr.CurrencyField` | (deprecated) | `String` | `String` | No | Same as above | Solr 9 only; removed in 10 |
+| Solr Class               | Common Schema Name | Java Read Type             | Java Write Type           | multiValued | Write/Read Asymmetry                                                                                                                                                                                                                                           | Solr 9/10                  |
+|--------------------------|--------------------|----------------------------|---------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|
+| `solr.CurrencyFieldType` | `currency`         | `String` (`"amount,CODE"`) | `String` (`"100.50,USD"`) | No          | NOT in KNOWN_TYPES. Stored as string `"amount,currencyCode"`. Internally uses two sub-fields (amount as `Long`, code as `String`), but the stored parent field is a `String`. If no currency code provided on write, appends the configured `defaultCurrency`. | Both                       |
+| `solr.CurrencyField`     | (deprecated)       | `String`                   | `String`                  | No          | Same as above                                                                                                                                                                                                                                                  | Solr 9 only; removed in 10 |
 
 ### Special-Purpose Field Types
 
-| Solr Class | Common Schema Name | Java Read Type | Java Write Type | multiValued | Notes | Solr 9/10 |
-|---|---|---|---|---|---|---|
-| `solr.RandomSortField` | `random` | N/A (not stored) | N/A (not indexed with values) | No | Never stores values. Used only for random sort ordering. Generates hash-based sort keys at query time. | Both |
-| `solr.ExternalFileField` | N/A | N/A (not stored) | N/A (values from external file) | No | Values come from an external file, not the index. Not stored, not retrievable via getFieldValue(). Used for boosting. | **Solr 9 only; removed in 10** |
-| `solr.PreAnalyzedField` | N/A | `String` | Serialized token stream (JSON or SimplePreAnalyzed format) | No | NOT in KNOWN_TYPES; stored part (if any) returns `String`. | **Solr 9 only; removed in 10** |
-| `solr.NestPathField` | `_nest_path_` | `String` | `String` | No | Extends `SortableTextField`. Stores hierarchy path for nested documents. Returns `String`. | Both |
-| `solr.RankField` | `rank` | Not typically retrieved | `Float` (as string `"0.5"`) | No | Stores scoring factors in Lucene `FeatureField`. Not designed for retrieval via `getFieldValue()`. Used at query time for ranking. | Both |
+| Solr Class               | Common Schema Name | Java Read Type          | Java Write Type                                            | multiValued | Notes                                                                                                                              | Solr 9/10                      |
+|--------------------------|--------------------|-------------------------|------------------------------------------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------|--------------------------------|
+| `solr.RandomSortField`   | `random`           | N/A (not stored)        | N/A (not indexed with values)                              | No          | Never stores values. Used only for random sort ordering. Generates hash-based sort keys at query time.                             | Both                           |
+| `solr.ExternalFileField` | N/A                | N/A (not stored)        | N/A (values from external file)                            | No          | Values come from an external file, not the index. Not stored, not retrievable via getFieldValue(). Used for boosting.              | **Solr 9 only; removed in 10** |
+| `solr.PreAnalyzedField`  | N/A                | `String`                | Serialized token stream (JSON or SimplePreAnalyzed format) | No          | NOT in KNOWN_TYPES; stored part (if any) returns `String`.                                                                         | **Solr 9 only; removed in 10** |
+| `solr.NestPathField`     | `_nest_path_`      | `String`                | `String`                                                   | No          | Extends `SortableTextField`. Stores hierarchy path for nested documents. Returns `String`.                                         | Both                           |
+| `solr.RankField`         | `rank`             | Not typically retrieved | `Float` (as string `"0.5"`)                                | No          | Stores scoring factors in Lucene `FeatureField`. Not designed for retrieval via `getFieldValue()`. Used at query time for ranking. | Both                           |
 
 ---
 
 ## multiValued Behaviour Summary
 
-No Solr field type is "multiValued by nature." The `multiValued` attribute is a schema-level property
+No Solr field type is "multiValued by nature." The `multiValued` attribute is a schema-level
+property
 set on individual field definitions, not intrinsic to field type classes.
 
 When `multiValued="true"` is set on a field:
 
-- **SolrJ read:** `getFieldValue()` returns a `Collection<Object>` (typically `ArrayList`) containing
+- **SolrJ read:** `getFieldValue()` returns a `Collection<Object>` (typically `ArrayList`)
+  containing
   multiple typed values. Each element has the same Java type as the single-valued case.
 - **SolrJ read (single value in multiValued field):** Still returns the single object directly (not
   wrapped in a list), unless `getFieldValues()` is called which always returns a `Collection`.
@@ -211,32 +223,32 @@ standard `multiValued` schema property mechanics.
 
 ### Field Types Removed in Solr 10
 
-| Removed Type | Replacement | Notes |
-|---|---|---|
-| `solr.TrieIntField` | `solr.IntPointField` | All Trie types deprecated since Solr 7 |
-| `solr.TrieLongField` | `solr.LongPointField` | |
-| `solr.TrieFloatField` | `solr.FloatPointField` | |
-| `solr.TrieDoubleField` | `solr.DoublePointField` | |
-| `solr.TrieDateField` | `solr.DatePointField` | |
-| `solr.TrieField` | Appropriate PointField | |
-| `solr.CurrencyField` | `solr.CurrencyFieldType` | |
-| `solr.EnumField` | `solr.EnumFieldType` | |
-| `solr.ExternalFileField` | None (removed entirely) | SOLR-17655 |
-| `solr.PreAnalyzedField` | None (removed entirely) | SOLR-17839; incompatible with Lucene 10 |
+| Removed Type             | Replacement              | Notes                                   |
+|--------------------------|--------------------------|-----------------------------------------|
+| `solr.TrieIntField`      | `solr.IntPointField`     | All Trie types deprecated since Solr 7  |
+| `solr.TrieLongField`     | `solr.LongPointField`    |                                         |
+| `solr.TrieFloatField`    | `solr.FloatPointField`   |                                         |
+| `solr.TrieDoubleField`   | `solr.DoublePointField`  |                                         |
+| `solr.TrieDateField`     | `solr.DatePointField`    |                                         |
+| `solr.TrieField`         | Appropriate PointField   |                                         |
+| `solr.CurrencyField`     | `solr.CurrencyFieldType` |                                         |
+| `solr.EnumField`         | `solr.EnumFieldType`     |                                         |
+| `solr.ExternalFileField` | None (removed entirely)  | SOLR-17655                              |
+| `solr.PreAnalyzedField`  | None (removed entirely)  | SOLR-17839; incompatible with Lucene 10 |
 
 ### Field Types Added/Enhanced in Solr 10
 
-| Type | Change |
-|---|---|
+| Type                    | Change                                                                                          |
+|-------------------------|-------------------------------------------------------------------------------------------------|
 | `solr.DenseVectorField` | Scalar and binary quantized vectors; native `float[]` indexing via JavaBin; HNSW params renamed |
 
 ### SolrJ API Changes in Solr 10
 
-| Change | Impact |
-|---|---|
-| `SolrQuery` moved to `org.apache.solr.client.solrj.request.SolrQuery` | Import change required |
-| Response `version` parameter removed | SolrJ no longer auto-appends version to requests |
-| Trie types removed from `KNOWN_TYPES` | N/A if you already migrated to Point types |
+| Change                                                                | Impact                                           |
+|-----------------------------------------------------------------------|--------------------------------------------------|
+| `SolrQuery` moved to `org.apache.solr.client.solrj.request.SolrQuery` | Import change required                           |
+| Response `version` parameter removed                                  | SolrJ no longer auto-appends version to requests |
+| Trie types removed from `KNOWN_TYPES`                                 | N/A if you already migrated to Point types       |
 
 ### Behaviour Unchanged Between Solr 9 and 10
 
@@ -277,6 +289,7 @@ Java bean properties annotated with `@Field`:
 For rapid lookup, sorted by the Java type you receive:
 
 ### Returns `String`
+
 - `StrField`, `TextField`, `SortableTextField`
 - `UUIDField`
 - `CollationField`, `ICUCollationField`
@@ -291,33 +304,43 @@ For rapid lookup, sorted by the Java type you receive:
 - `PreAnalyzedField` (Solr 9 only)
 
 ### Returns `Integer`
+
 - `IntPointField`
 
 ### Returns `Long`
+
 - `LongPointField`
 
 ### Returns `Float`
+
 - `FloatPointField`
 
 ### Returns `Double`
+
 - `DoublePointField`
 
 ### Returns `Boolean`
+
 - `BoolField`
 
 ### Returns `java.util.Date`
+
 - `DatePointField`
 
 ### Returns `byte[]` (via JavaBin) / `ByteBuffer` (via `toObject()`)
+
 - `BinaryField`
 
 ### Returns `EnumFieldValue`
+
 - `EnumFieldType`
 
 ### Returns `List<Float>` or `List<Number>`
+
 - `DenseVectorField` (FLOAT32 encoding: `List<Float>`; BYTE encoding: `List<Number>` of `Integer`)
 
 ### Returns nothing (not retrievable)
+
 - `RandomSortField`
 - `ExternalFileField` (Solr 9 only)
 - `RankField` (not designed for retrieval)

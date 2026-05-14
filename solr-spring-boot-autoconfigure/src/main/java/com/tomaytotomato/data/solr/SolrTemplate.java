@@ -2,6 +2,7 @@ package com.tomaytotomato.data.solr;
 
 import com.tomaytotomato.data.solr.mapping.SolrDocumentReader;
 import com.tomaytotomato.data.solr.mapping.SolrDocumentResolver;
+import com.tomaytotomato.data.solr.mapping.SolrDocumentWriter;
 import com.tomaytotomato.data.solr.query.FacetFieldEntry;
 import com.tomaytotomato.data.solr.query.FacetQueryEntry;
 import com.tomaytotomato.data.solr.query.HighlightEntry;
@@ -51,7 +52,8 @@ public class SolrTemplate implements SolrOperations {
   @Override
   public <T> T save(String collection, T entity) {
     try {
-      solrClient.addBean(collection, entity);
+      var writer = new SolrDocumentWriter<T>();
+      solrClient.add(collection, writer.convert(entity));
       commitIfImmediate(collection);
       return entity;
     } catch (IOException | SolrServerException e) {
@@ -68,7 +70,9 @@ public class SolrTemplate implements SolrOperations {
   @Override
   public <T> List<T> saveAll(String collection, Collection<T> entities) {
     try {
-      solrClient.addBeans(collection, entities);
+      var writer = new SolrDocumentWriter<T>();
+      var docs = entities.stream().map(writer::convert).toList();
+      solrClient.add(collection, docs);
       commitIfImmediate(collection);
       return new ArrayList<>(entities);
     } catch (IOException | SolrServerException e) {

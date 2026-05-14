@@ -605,10 +605,63 @@ CrudOperations, and PartialUpdates.
 
 **Tests:** 414 total (363 unit + 51 integration), 0 failures. JaCoCo coverage gate passes at >80%.
 
+---
+
+## 2026-05-14 — Day 3 (continued): Custom Document Mapping Layer
+
+### Session 2: SolrDocumentReader — Bypass SolrJ's DocumentObjectBinder (14:30–15:40)
+
+**Commit:** `2f42b41`
+
+The `getAll` endpoint in the sample app threw `IllegalArgumentException: Can not set String field
+to ArrayList` — SolrJ's `DocumentObjectBinder` can't handle the type mismatch when
+`LatLonPointSpatialField` with `docValues="true"` returns `ArrayList<Double>` instead of
+the `String` that was indexed. Rather than patching the schema or the entity, we built what the
+original spring-data-solr always had: a custom document mapping layer that sits between Solr
+responses and Java entities.
+
+Designed a single generic interface `SolrDocumentConverter<S, T>` with a `convert()` method, then
+two concrete implementations — `SolrDocumentReader<T>` (SolrDocument → entity) and
+`SolrDocumentWriter<T>` (entity → SolrInputDocument, stub for now). This replaced the unused
+`SolrReadConverter` and `SolrWriteConverter` marker interfaces from the v0.1 converter pipeline
+scaffolding.
+
+`SolrDocumentReader` uses reflection to walk `@Field`-annotated fields (including superclass
+hierarchy), resolve Solr field names from annotation values, and apply a type coercion chain:
+direct assignment → single-element collection unwrap → `ArrayList<Double>` to comma-joined `String`
+(the spatial field fix) → multi-valued field to `List`. Also handles `@Score` mapping.
+
+Wired into `SolrTemplate` by replacing all six `response.getBeans(type)` calls with
+`mapDocuments(response.getResults(), type)` using the new reader. Removed the `SolrCustomConversions`
+field from `SolrTemplate` (it was never applied). Updated all test fixtures across `SolrTemplateTest`
+and `MicrometerSolrTemplateTest` to use real `SolrDocument` objects instead of mocking `getBeans()`.
+
+Also produced `SOLR-FIELD-TYPES.md` — a comprehensive reference documenting Java type mappings for
+all Solr 9/10 field types, the `DocsStreamer.getValue()` dispatch chain, and the `KNOWN_TYPES` set
+that determines whether `toObject()` or `toExternal()` is called. Key finding: spatial types are NOT
+in KNOWN_TYPES, which is why the docValues path returns different types than the stored field path.
+
+**Gotchas discovered:**
+- SolrJ's `DocumentObjectBinder` performs strict type matching with zero coercion — `ArrayList<Double>`
+  to `String` is simply not supported, despite Solr accepting `String` on write and returning
+  `ArrayList` on read for the same spatial field
+- `DocsStreamer.getValue()` has a two-path dispatch: if the field type is in `KNOWN_TYPES`, it calls
+  `toObject()` (typed); otherwise `toExternal()` (String). Spatial types aren't in `KNOWN_TYPES`.
+  The docValues code path is entirely separate and can return different Java types
+- Non-public inner test classes (`static class TestDocument`) fail with `IllegalAccessException` when
+  instantiated via `getDeclaredConstructor().newInstance()` — fixed by making test fixtures `public`
+  rather than using `constructor.setAccessible(true)` (SonarQube flagged the reflection approach)
+- SolrJ's `@Field` annotation uses `"#default"` as the sentinel for "use the Java field name" — must
+  check for both empty string and `"#default"`
+
+**Tests:** 401 total (367 unit + 34 integration), 0 failures. 4 new reader tests + fixture updates
+across 4 existing test files.
+
 ### Remaining
 
 - [ ] Publish to Maven Central
-- [ ] Converter application during read/write (follow-up to foundation layer)
+- [x] Converter application during read (SolrDocumentReader wired into SolrTemplate)
+- [ ] Converter application during write (SolrDocumentWriter implementation)
 - [ ] `@Highlight` and `@Facet` method-level annotations for repository methods
 - [ ] Geospatial integration tests with Testcontainers (requires spatial field type in schema)
 - [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)
