@@ -26,7 +26,7 @@ class SolrCustomConversionsTest {
 
     @Test
     void convertersAreStoredAndRetrievable() {
-      SolrReadConverter<String, LocalDate> readConverter = LocalDate::parse;
+      SolrDocumentConverter<String, LocalDate> readConverter = LocalDate::parse;
       var conversions = new SolrCustomConversions(List.of(readConverter));
 
       assertThat(conversions.getConverters()).hasSize(1);
@@ -35,8 +35,8 @@ class SolrCustomConversionsTest {
 
     @Test
     void multipleConvertersAreAllStored() {
-      SolrReadConverter<String, LocalDate> readConverter = LocalDate::parse;
-      SolrWriteConverter<LocalDate, String> writeConverter = LocalDate::toString;
+      SolrDocumentConverter<String, LocalDate> readConverter = LocalDate::parse;
+      SolrDocumentConverter<LocalDate, String> writeConverter = LocalDate::toString;
       var conversions = new SolrCustomConversions(List.of(readConverter, writeConverter));
 
       assertThat(conversions.getConverters()).hasSize(2);

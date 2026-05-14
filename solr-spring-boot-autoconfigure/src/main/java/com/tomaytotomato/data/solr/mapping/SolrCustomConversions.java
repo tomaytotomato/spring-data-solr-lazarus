@@ -3,7 +3,7 @@ package com.tomaytotomato.data.solr.mapping;
 import java.util.List;
 
 /**
- * Registry for user-defined {@link SolrReadConverter} and {@link SolrWriteConverter} instances.
+ * Registry for user-defined {@link SolrDocumentConverter} instances used during document mapping.
  *
  * <p>Declare a {@code SolrCustomConversions} bean in your application context to supply custom
  * converters:
@@ -12,13 +12,10 @@ import java.util.List;
  * @Bean
  * public SolrCustomConversions solrCustomConversions() {
  *     return new SolrCustomConversions(List.of(
- *         (SolrReadConverter<String, LocalDate>) LocalDate::parse
+ *         (SolrDocumentConverter<String, LocalDate>) LocalDate::parse
  *     ));
  * }
  * }</pre>
- *
- * <p>Custom converters are registered and stored here but are not yet applied automatically during
- * document mapping. Integration with the read/write path is planned for a future version.
  */
 public class SolrCustomConversions {
 
