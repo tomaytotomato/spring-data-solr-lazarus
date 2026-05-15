@@ -63,15 +63,13 @@ The original Spring Data Solr
 was [discontinued in April 2020](https://spring.io/blog/2020/04/07/spring-data-for-apache-solr-discontinued/)
 and [archived in September 2023](https://github.com/spring-attic/spring-data-solr).
 
-After this the world moved on; Solr got updates, SolrJ was updated and Spring Boot went into version
-
-3.
+After this the world moved on; Solr got updated, SolrJ was updated and Spring Boot went to version 3.
 
 However there was no pathway for anyone to continue to use Spring boot with Solr in a project.
 
 Lazarus is a clean re-implementation with a baseline in the latest versions of all these libraries.
 
-This is not a fork of the OG library.
+This is not a fork of the original library.
 
 See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
 project.
