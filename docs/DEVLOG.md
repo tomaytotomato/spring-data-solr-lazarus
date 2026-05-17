@@ -657,11 +657,49 @@ in KNOWN_TYPES, which is why the docValues path returns different types than the
 **Tests:** 401 total (367 unit + 34 integration), 0 failures. 4 new reader tests + fixture updates
 across 4 existing test files.
 
+### Session 3: SolrDocumentWriter — Complete the Mapping Layer (PR #9)
+
+**Commit:** `7a8d812` (merged via PR #9, `ac11caf`)
+
+Closed the write-side gap left by Session 2. `SolrDocumentWriter` mirrors `SolrDocumentReader` — walks
+`@Field`-annotated fields (including superclass hierarchy), resolves Solr field names from annotation
+values, and converts entity → `SolrInputDocument`. `SolrTemplate.save()` and `saveAll()` now bypass
+SolrJ's `DocumentObjectBinder` entirely, using the writer for symmetric round-trip semantics with the
+reader.
+
+This completes the custom document mapping layer that was the original `spring-data-solr`'s strongest
+feature — and the one most teams missed when forced to fall back to raw SolrJ after archival.
+
+**Tests:** SolrDocumentWriter test class added, existing SolrTemplate save tests adapted. Build green.
+
+### Session 4: Docs Reshuffle, Architecture Diagrams, Dependency Hygiene (later in the day)
+
+**Commits:** `13f8599` (image move), `38b60b7`, `1406a21`, `fc3480e`, `262e987`, `027c24d` (README polish),
+plus Dependabot merges `eea738f`, `940e071`, `20eff35`, `009737e`, `2280565`.
+
+Docs housekeeping: moved `DEVLOG.md`, `LIMITATIONS.md`, and `SOLR-FIELD-TYPES.md` under `docs/`,
+restructured the README feature list into a table, fixed assorted spelling, moved the title image
+into `assets/`. Three README links to the moved docs were stale (`README.md:63`, `:176`, `:177`) —
+fixed in this same session.
+
+Added `docs/ARCHITECTURE.md` with four Mermaid diagrams covering the auto-configuration chain, the
+repository-call sequence flow, the Spring Boot middleware integration map, and the configuration
+surface. Renders inline on GitHub.
+
+Dependabot merges absorbed cleanly: jacoco 0.8.13 → 0.8.14, surefire 3.5.5, compiler-plugin 3.15.0,
+`actions/setup-java` → 5, `actions/upload-artifact` → 7, `actions/checkout` → 6.
+
+**Tests:** 401 total (367 unit + 34 integration), unchanged. No production code touched.
+
+---
+
+## What's Next
+
 ### Remaining
 
 - [ ] Publish to Maven Central
-- [x] Converter application during read (SolrDocumentReader wired into SolrTemplate)
-- [ ] Converter application during write (SolrDocumentWriter implementation)
+- [x] Converter application during read (SolrDocumentReader wired into SolrTemplate, Day 3 Session 2)
+- [x] Converter application during write (SolrDocumentWriter, Day 3 Session 3, PR #9)
 - [ ] `@Highlight` and `@Facet` method-level annotations for repository methods
 - [ ] Geospatial integration tests with Testcontainers (requires spatial field type in schema)
 - [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)

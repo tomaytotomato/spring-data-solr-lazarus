@@ -60,7 +60,7 @@ Lazarus is a clean re-implementation with a baseline in the latest versions of a
 
 This is not a fork of the original library.
 
-See [LIMITATIONS.md](assets/LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
+See [LIMITATIONS.md](docs/LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
 project.
 
 ## Module Structure
@@ -173,8 +173,8 @@ public interface BookRepository extends SolrRepository<Book, String> {
 
 - [A picture of Josh Long](https://joshlong.com/img/josh-hero-image.2ac6dba0.png)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Dev Log](DEVLOG.md)
-- [Limitations of the Original](LIMITATIONS.md)
+- [Dev Log](docs/DEVLOG.md)
+- [Limitations of the Original](docs/LIMITATIONS.md)
 - [Original Project (Spring Attic)](https://github.com/spring-attic/spring-data-solr)
 - [Spring Boot Starter Template](https://github.com/ericus20/spring-boot-starter)
 - [Apache SolrJ Reference](https://solr.apache.org/guide/solr/latest/deployment-guide/solrj.html)
