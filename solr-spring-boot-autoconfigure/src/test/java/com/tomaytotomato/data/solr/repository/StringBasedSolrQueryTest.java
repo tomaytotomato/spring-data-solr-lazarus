@@ -66,7 +66,7 @@ class StringBasedSolrQueryTest {
     var factory = new SpelAwareProxyProjectionFactory();
     var queryMethod = new QueryMethod(method, metadata, factory);
     var annotation = method.getAnnotation(Query.class);
-    return new StringBasedSolrQuery(queryMethod, solrTemplate, annotation.value(), annotation.count());
+    return new StringBasedSolrQuery(queryMethod, solrTemplate, annotation.value(), annotation.count(), method);
   }
 
   @Nested

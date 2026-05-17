@@ -693,6 +693,72 @@ Dependabot merges absorbed cleanly: jacoco 0.8.13 → 0.8.14, surefire 3.5.5, co
 
 ---
 
+## 2026-05-17 — Day 4: Declarative Highlighting and Faceting
+
+### Session 1: @Highlight and @Facet Method-Level Annotations (feat/highlight-facet-annotations)
+
+**Branch:** `feat/highlight-facet-annotations`
+
+Implemented two new method-level annotations for the repository layer — `@Highlight` and `@Facet` —
+mirroring the pattern established by `@Query`. Repository authors can now declare highlighting and
+faceting declaratively on the interface method rather than having to call `SolrTemplate`
+imperatively.
+
+**API surface:**
+
+```java
+@Highlight(fields = "title", prefix = "<mark>", postfix = "</mark>", snippets = 2)
+HighlightPage<Book> findByTitleContaining(String term, Pageable pageable);
+
+@Facet(fields = {"author", "genre"}, queries = {"year:[2000 TO 2010]"}, minCount = 1)
+FacetPage<Book> findByTitleContaining(String term, Pageable pageable);
+
+// Both annotations compose with @Query for string-based queries:
+@Query("title:?0 AND author:?1")
+@Highlight(fields = "title")
+HighlightPage<Book> searchBooks(String term, String author, Pageable pageable);
+```
+
+**New production files:**
+- `Highlight.java` — annotation with `fields`, `fragsize`, `snippets`, `prefix`, `postfix`
+- `Facet.java` — annotation with `fields`, `queries`, `minCount`, `limit`
+- `HighlightAnnotationAdapter.java` — converts `@Highlight` → `HighlightOptions`
+- `FacetAnnotationAdapter.java` — converts `@Facet` → `FacetOptions`
+- `Criteria.raw(String)` — new factory method on `Criteria` for embedding pre-built query strings
+
+**Modified production files:**
+- `PartTreeSolrQuery` — accepts `Method` in constructor (previously parsed from `QueryMethod`
+  which exposes it only package-privately); detects `@Highlight`/`@Facet` before the standard
+  page/collection dispatch. Highlight/facet branches both set pageable and the appropriate options
+  object before calling the matching template method.
+- `StringBasedSolrQuery` — same `Method` constructor pattern; wraps the resolved string query in a
+  `SimpleQuery` via `Criteria.raw()` for the highlight/facet paths (those template methods require
+  `SimpleQuery`, not raw `SolrQuery`). Also fixes a latent bug: `Pageable` parameters were being
+  passed to `ClientUtils.escapeQueryChars` — now skipped in `resolveParameters`.
+- `SolrQueryLookupStrategy` — passes the `Method` through to both `RepositoryQuery` implementations.
+
+**Design decision:** Return type (`HighlightPage` / `FacetPage`) is the dispatch signal. The
+annotations _require_ the corresponding return type. This prevents silent mismatches where someone
+adds `@Highlight` to a method returning `Page<T>` and wonders why snippets are missing — the
+highlight path simply won't activate. Clean fail-fast without an exception.
+
+**Gotchas discovered:**
+- `QueryMethod.getMethod()` is package-private in Spring Data Commons 4.0.5 despite appearing
+  in `javap` output. The `javap` decompiler shows the method regardless of access modifier.
+  Solution: pass `Method` explicitly via constructor from `SolrQueryLookupStrategy` which already
+  holds it from `resolveQuery(Method method, ...)`.
+- PartTree parses method names strictly — test repository methods like `findByTitleContainingFaceted`
+  fail with `PropertyReference: No property 'faceted' found`. Test methods must use valid PartTree
+  vocabulary even when the dispatch logic ignores the parse result.
+- `new HighlightPage<>(List.of(), ...)` infers `HighlightPage<Object>` when used in Mockito stubs
+  typed to `HighlightPage<Book>`. Fix: use raw type variable (`HighlightPage emptyPage`) with
+  `@SuppressWarnings("rawtypes")` on the test class.
+
+**Tests:** 42 new tests across 4 test classes. 443 total (409 unit + 34 integration), 0 failures.
+JaCoCo line coverage gate passes (≥80%).
+
+---
+
 ## What's Next
 
 ### Remaining
@@ -700,8 +766,8 @@ Dependabot merges absorbed cleanly: jacoco 0.8.13 → 0.8.14, surefire 3.5.5, co
 - [ ] Publish to Maven Central
 - [x] Converter application during read (SolrDocumentReader wired into SolrTemplate, Day 3 Session 2)
 - [x] Converter application during write (SolrDocumentWriter, Day 3 Session 3, PR #9)
-- [ ] `@Highlight` and `@Facet` method-level annotations for repository methods
-- [x] Geospatial integration tests with Testcontainers (PR — `test/geo-integration-tests`)
+- [x] `@Highlight` and `@Facet` method-level annotations for repository methods (Day 4, feat/highlight-facet-annotations)
+- [x] Geospatial integration tests with Testcontainers (PR #10 — `test/geo-integration-tests`)
 - [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)
 
 ---

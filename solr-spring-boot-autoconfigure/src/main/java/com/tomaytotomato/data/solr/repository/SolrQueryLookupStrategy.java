@@ -24,8 +24,8 @@ public class SolrQueryLookupStrategy implements QueryLookupStrategy {
     var queryAnnotation = method.getAnnotation(Query.class);
     if (queryAnnotation != null) {
       return new StringBasedSolrQuery(queryMethod, solrTemplate,
-          queryAnnotation.value(), queryAnnotation.count());
+          queryAnnotation.value(), queryAnnotation.count(), method);
     }
-    return new PartTreeSolrQuery(queryMethod, solrTemplate);
+    return new PartTreeSolrQuery(queryMethod, solrTemplate, method);
   }
 }
