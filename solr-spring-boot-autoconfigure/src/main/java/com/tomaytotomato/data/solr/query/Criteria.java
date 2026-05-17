@@ -51,6 +51,16 @@ public class Criteria {
     return new Criteria(field);
   }
 
+  /**
+   * Creates a criteria that renders the given query string verbatim, without any field prefix or
+   * escaping. Useful when integrating a pre-built Solr query string into a {@link SimpleQuery}.
+   */
+  public static Criteria raw(String queryString) {
+    var criteria = new Criteria(queryString);
+    criteria.predicates.add(new Predicate(queryString, false, true));
+    return criteria;
+  }
+
   // -----------------------------------------------------------------------
   // Predicates
   // -----------------------------------------------------------------------

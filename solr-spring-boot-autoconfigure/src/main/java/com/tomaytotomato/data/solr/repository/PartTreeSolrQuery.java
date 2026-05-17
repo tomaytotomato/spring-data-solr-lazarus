@@ -1,7 +1,10 @@
 package com.tomaytotomato.data.solr.repository;
 
+import com.tomaytotomato.data.solr.FacetPage;
+import com.tomaytotomato.data.solr.HighlightPage;
 import com.tomaytotomato.data.solr.SolrTemplate;
 import com.tomaytotomato.data.solr.mapping.SolrDocumentResolver;
+import java.lang.reflect.Method;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.repository.query.ParametersParameterAccessor;
 import org.springframework.data.repository.query.QueryMethod;
@@ -14,12 +17,14 @@ public class PartTreeSolrQuery implements RepositoryQuery {
   private final SolrTemplate solrTemplate;
   private final PartTree tree;
   private final Class<?> domainType;
+  private final Method method;
 
-  public PartTreeSolrQuery(QueryMethod queryMethod, SolrTemplate solrTemplate) {
+  public PartTreeSolrQuery(QueryMethod queryMethod, SolrTemplate solrTemplate, Method method) {
     this.queryMethod = queryMethod;
     this.solrTemplate = solrTemplate;
     this.domainType = queryMethod.getEntityInformation().getJavaType();
     this.tree = new PartTree(queryMethod.getName(), domainType);
+    this.method = method;
   }
 
   @Override
@@ -35,6 +40,24 @@ public class PartTreeSolrQuery implements RepositoryQuery {
 
     if (tree.isExistsProjection()) {
       return solrTemplate.count(collection, query) > 0;
+    }
+
+    var highlightAnnotation = method.getAnnotation(Highlight.class);
+    if (highlightAnnotation != null && HighlightPage.class.isAssignableFrom(method.getReturnType())) {
+      var pageable = accessor.getPageable().isUnpaged()
+          ? PageRequest.of(0, 10) : accessor.getPageable();
+      query.setPageable(pageable);
+      query.setHighlightOptions(HighlightAnnotationAdapter.toHighlightOptions(highlightAnnotation));
+      return solrTemplate.queryForHighlightPage(collection, query, domainType);
+    }
+
+    var facetAnnotation = method.getAnnotation(Facet.class);
+    if (facetAnnotation != null && FacetPage.class.isAssignableFrom(method.getReturnType())) {
+      var pageable = accessor.getPageable().isUnpaged()
+          ? PageRequest.of(0, 10) : accessor.getPageable();
+      query.setPageable(pageable);
+      query.setFacetOptions(FacetAnnotationAdapter.toFacetOptions(facetAnnotation));
+      return solrTemplate.queryForFacetPage(collection, query, domainType);
     }
 
     if (queryMethod.isPageQuery()) {

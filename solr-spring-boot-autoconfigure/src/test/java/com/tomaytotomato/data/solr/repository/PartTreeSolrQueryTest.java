@@ -56,7 +56,7 @@ class PartTreeSolrQueryTest {
     var metadata = new DefaultRepositoryMetadata(ProductRepository.class);
     var factory = new SpelAwareProxyProjectionFactory();
     var queryMethod = new QueryMethod(method, metadata, factory);
-    return new PartTreeSolrQuery(queryMethod, solrTemplate);
+    return new PartTreeSolrQuery(queryMethod, solrTemplate, method);
   }
 
   @Nested
