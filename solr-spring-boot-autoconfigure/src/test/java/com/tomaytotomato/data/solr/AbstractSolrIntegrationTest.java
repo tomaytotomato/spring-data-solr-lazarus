@@ -3,8 +3,14 @@ package com.tomaytotomato.data.solr;
 import com.tomaytotomato.data.solr.health.SolrHealthIndicator;
 import com.tomaytotomato.data.solr.query.Criteria;
 import com.tomaytotomato.data.solr.query.FacetOptions;
+import com.tomaytotomato.data.solr.query.GeoDistance;
+import com.tomaytotomato.data.solr.query.GeoPoint;
 import com.tomaytotomato.data.solr.query.HighlightOptions;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.solr.client.solrj.beans.Field;
@@ -503,6 +509,167 @@ abstract class AbstractSolrIntegrationTest {
         assertThat(highlightPage.getHighlighted()).hasSize(1);
         assertThat(highlightPage.getHighlighted().getFirst().highlights())
             .containsKey("title_s");
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Geospatial fixtures
+  // -------------------------------------------------------------------------
+
+  /**
+   * A minimal Solr entity carrying a LatLonPointSpatialField value.
+   * The {@code location} field must be defined in the schema before indexing —
+   * see {@link GeoSpatial#defineLocationField()}.
+   */
+  public static class TestPlace {
+    @Field
+    String id;
+
+    @Field("name_s")
+    String name;
+
+    /**
+     * Stored as {@code "lat,lon"} on write. On read, Solr may return an
+     * {@code ArrayList<Double>} when docValues are active; {@link
+     * com.tomaytotomato.data.solr.mapping.SolrDocumentReader} coerces it back to a
+     * comma-joined String.
+     */
+    @Field("location")
+    String location;
+  }
+
+  static TestPlace place(String id, String name, double lat, double lon) {
+    var p = new TestPlace();
+    p.id = id;
+    p.name = name;
+    p.location = lat + "," + lon;
+    return p;
+  }
+
+  // Known city coordinates
+  static final GeoPoint LONDON    = new GeoPoint(51.5074, -0.1278);
+  static final GeoPoint PARIS     = new GeoPoint(48.8566,  2.3522);
+  static final GeoPoint EDINBURGH = new GeoPoint(55.9533, -3.1883);
+  static final GeoPoint TOKYO     = new GeoPoint(35.6762, 139.6503);
+
+  /**
+   * Registers the {@code location} field (type {@code location} =
+   * {@code LatLonPointSpatialField}) via Solr's Schema API.
+   *
+   * <p>The {@code _default} configset ships with the {@code location} field <em>type</em>
+   * pre-registered; we only need to add the concrete field definition. Solr returns HTTP 400
+   * if the field already exists — that is treated as a no-op so the call is idempotent.
+   */
+  void defineLocationField() throws Exception {
+    var solr = getSolrContainer();
+    var url = "http://" + solr.getHost() + ":" + solr.getSolrPort()
+        + "/solr/" + COLLECTION + "/schema";
+    var body = """
+        {"add-field":{"name":"location","type":"location","indexed":true,"stored":true}}
+        """;
+    var request = HttpRequest.newBuilder()
+        .uri(URI.create(url))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body))
+        .build();
+    var response = HttpClient.newHttpClient()
+        .send(request, HttpResponse.BodyHandlers.ofString());
+    // 200 = added, 400 = already exists (idempotent) — both are acceptable
+    assertThat(response.statusCode())
+        .as("Schema API response for add-field location: %s", response.body())
+        .isIn(200, 400);
+  }
+
+  @Nested
+  class GeoSpatial {
+
+    @BeforeEach
+    void defineLocationField() throws Exception {
+      AbstractSolrIntegrationTest.this.defineLocationField();
+    }
+
+    @Test
+    void nearQueryReturnsDocumentsWithinRadiusInKilometres() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            place("g1", "London",    51.5074,  -0.1278),
+            place("g2", "Edinburgh", 55.9533,  -3.1883),
+            place("g3", "Tokyo",     35.6762, 139.6503)
+        ));
+
+        // Search within 100 km of London — should find London, not Edinburgh (~534 km away)
+        var query = new SimpleQuery(
+            Criteria.where("location").near(LONDON, GeoDistance.kilometers(100)));
+        var results = template.queryForPage(COLLECTION, query, TestPlace.class);
+
+        assertThat(results.getContent()).extracting(p -> p.name)
+            .containsExactly("London")
+            .doesNotContain("Edinburgh", "Tokyo");
+      });
+    }
+
+    @Test
+    void nearQueryReturnsDocumentsWithinRadiusInMiles() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            place("g4", "London",    51.5074,  -0.1278),
+            place("g5", "Edinburgh", 55.9533,  -3.1883),
+            place("g6", "Tokyo",     35.6762, 139.6503)
+        ));
+
+        // 62 miles ≈ 99.8 km — inside London, outside Edinburgh
+        var query = new SimpleQuery(
+            Criteria.where("location").near(LONDON, GeoDistance.miles(62)));
+        var results = template.queryForPage(COLLECTION, query, TestPlace.class);
+
+        assertThat(results.getContent()).extracting(p -> p.name)
+            .containsExactly("London")
+            .doesNotContain("Edinburgh", "Tokyo");
+      });
+    }
+
+    @Test
+    void withinQueryReturnsBoundingBoxResults() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            place("g7", "Paris",     48.8566,  2.3522),
+            place("g8", "London",    51.5074, -0.1278),
+            place("g9", "Tokyo",     35.6762, 139.6503)
+        ));
+
+        // 200 km bounding box around Paris — should find Paris; London is ~340 km away
+        var query = new SimpleQuery(
+            Criteria.where("location").within(PARIS, GeoDistance.kilometers(200)));
+        var results = template.queryForPage(COLLECTION, query, TestPlace.class);
+
+        assertThat(results.getContent()).extracting(p -> p.name)
+            .containsExactly("Paris")
+            .doesNotContain("London", "Tokyo");
+      });
+    }
+
+    @Test
+    void documentOutsideRadiusIsExcluded() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            place("g10", "London",    51.5074,  -0.1278),
+            place("g11", "Edinburgh", 55.9533,  -3.1883),
+            place("g12", "Paris",     48.8566,   2.3522),
+            place("g13", "Tokyo",     35.6762, 139.6503)
+        ));
+
+        // Tight 10 km radius around London city centre — only London itself qualifies
+        var query = new SimpleQuery(
+            Criteria.where("location").near(LONDON, GeoDistance.kilometers(10)));
+        var results = template.queryForPage(COLLECTION, query, TestPlace.class);
+
+        assertThat(results.getTotalElements()).isEqualTo(1);
+        assertThat(results.getContent().getFirst().name).isEqualTo("London");
       });
     }
   }

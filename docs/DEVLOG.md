@@ -701,5 +701,45 @@ Dependabot merges absorbed cleanly: jacoco 0.8.13 → 0.8.14, surefire 3.5.5, co
 - [x] Converter application during read (SolrDocumentReader wired into SolrTemplate, Day 3 Session 2)
 - [x] Converter application during write (SolrDocumentWriter, Day 3 Session 3, PR #9)
 - [ ] `@Highlight` and `@Facet` method-level annotations for repository methods
-- [ ] Geospatial integration tests with Testcontainers (requires spatial field type in schema)
+- [x] Geospatial integration tests with Testcontainers (PR — `test/geo-integration-tests`)
 - [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)
+
+---
+
+## 2026-05-17 — Day 4: Geospatial Integration Tests
+
+### Session 1: Testcontainers Verification of near() and within() (22:00–22:30)
+
+**Branch:** `test/geo-integration-tests`
+
+Added a `GeoSpatial` `@Nested` class to `AbstractSolrIntegrationTest` — it runs automatically
+against both Solr 9 and Solr 10 via the existing dual-version subclass pattern. Four tests cover
+the full geospatial query surface:
+
+- `nearQueryReturnsDocumentsWithinRadiusInKilometres` — `{!geofilt}` finds London within 100 km,
+  excludes Edinburgh (~534 km) and Tokyo
+- `nearQueryReturnsDocumentsWithinRadiusInMiles` — 62 miles (~99.8 km) exercises the
+  `GeoDistance.miles()` → km conversion path in `GeoDistance.toKilometers()`
+- `withinQueryReturnsBoundingBoxResults` — `{!bbox}` finds Paris within 200 km bounding box,
+  excludes London (~340 km) and Tokyo
+- `documentOutsideRadiusIsExcluded` — tight 10 km circle around London, asserts only 1 result
+
+**Schema API technique:** The `_default` configset ships with the `location` field *type*
+(`LatLonPointSpatialField`) pre-registered. A `@BeforeEach` in the nested class posts to
+`/solr/books/schema` to add the concrete `location` *field* before any indexing. HTTP 400
+("field already exists") is treated as a no-op, making the call idempotent across tests.
+
+**Gotchas discovered:**
+
+- `_default` configset: the field TYPE `location` (`LatLonPointSpatialField`) is already
+  registered; only the field definition itself is missing. The Schema API `add-field` command
+  with `{"name":"location","type":"location"}` is all that's needed.
+- HTTP 400 from Schema API when field already exists is normal — the field is still usable.
+  Accept both 200 (first add) and 400 (idempotent re-add) as success states.
+- `SolrDocumentReader` correctly handles the `ArrayList<Double>` → comma-joined `String`
+  coercion for `LatLonPointSpatialField` values read back from Solr (docValues path). No
+  additional mapping code was needed — the existing coercion chain handles it.
+- `Criteria.near()` and `Criteria.within()` render raw predicates without a `field:` prefix,
+  which is correct — the field name is embedded in the `{!geofilt sfield=...}` syntax itself.
+
+**Tests:** 417 total (367 unit + 50 integration), 0 failures. JaCoCo coverage gate passes.
