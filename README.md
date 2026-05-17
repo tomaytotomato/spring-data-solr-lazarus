@@ -8,16 +8,15 @@
 ![Solr](https://img.shields.io/badge/Solr-9%20%7C%2010-blue)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue)
 
-Sometimes you wonder if a project is really dead or is just taking a break in the attic.
+Sometimes you wonder if a project is really dead or if it's just taking a break in the attic.
 
-Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has
-been resurrected from the bit void.
+Like Lazarus, the [Spring Data Solr](https://github.com/spring-attic/spring-data-solr) project has been resurrected from the cold dark bit void.
 
-This project was driven by several things:
+This revival was driven by a few motivations:
 
-- Solr is still an active and popular search DB.
-- How can we rebuild a spring-boot-starter library using Claude code and human input.
-- Don't vibe it, instead spec it out and verify it works
+- **Activity**; Solr remains a highly active and popular search database. Solr is also a technology I enjoyed using.
+- **LLM maintenance and development**; creating a library is "easy", maintaining and growing it is the hard part.
+- **Specified requirements over instinct**: rather than vibe code the library, lets specify what we want and then verify it with tests.
 
 ## Features
 
@@ -35,16 +34,6 @@ This project was driven by several things:
 | **Health Indicator**         | Spring Boot Actuator   | Integration that pings collections or falls back to admin info.                                        |
 | **Criteria API**             | Fluent Query Builder   | Programmatic builder: `Criteria.where("title").contains("spring").and("price").greaterThan(10)`.       |
 
-## Tech Stack
-
-| Component          | Version   |
-|--------------------|-----------|
-| Java               | 21+       |
-| Spring Boot        | 4.0.6     |
-| Spring Framework   | 7.0.x     |
-| SolrJ              | 10.0.0    |
-| Solr compatibility | 9.x, 10.x |
-| Testcontainers     | 2.0.5     |
 
 ## Why?
 
@@ -71,7 +60,7 @@ Lazarus is a clean re-implementation with a baseline in the latest versions of a
 
 This is not a fork of the original library.
 
-See [LIMITATIONS.md](LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
+See [LIMITATIONS.md](assets/LIMITATIONS.md) for a detailed comparison of the original spring-data-solr
 project.
 
 ## Module Structure
@@ -87,7 +76,7 @@ solr-spring-boot-sample         : demo Spring Boot app with Docker Compose suppo
 
 ### Prerequisites
 
-![jean-luc-java.png](jean-luc-java.png)
+![jean-luc-java.png](assets/jean-luc-java.png)
 
 - JDK 21+
 - Docker (for integration tests and the sample app)
@@ -183,6 +172,7 @@ public interface BookRepository extends SolrRepository<Book, String> {
 ## Links and References
 
 - [A picture of Josh Long](https://joshlong.com/img/josh-hero-image.2ac6dba0.png)
+- [Architecture](docs/ARCHITECTURE.md)
 - [Dev Log](DEVLOG.md)
 - [Limitations of the Original](LIMITATIONS.md)
 - [Original Project (Spring Attic)](https://github.com/spring-attic/spring-data-solr)
