@@ -7,12 +7,14 @@ import com.tomaytotomato.data.solr.query.GeoDistance;
 import com.tomaytotomato.data.solr.query.GeoPoint;
 import com.tomaytotomato.data.solr.query.HighlightOptions;
 import com.tomaytotomato.data.solr.query.SimpleQuery;
+import com.tomaytotomato.data.solr.query.StreamingExpression;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.solr.client.solrj.beans.Field;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -670,6 +672,123 @@ abstract class AbstractSolrIntegrationTest {
 
         assertThat(results.getTotalElements()).isEqualTo(1);
         assertThat(results.getContent().getFirst().name).isEqualTo("London");
+      });
+    }
+  }
+
+  @Nested
+  class StreamingExpressions {
+
+    @Test
+    void searchExpressionReturnsIndexedDocumentsExcludingEofTuple() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("s1", "Dune", "Frank Herbert", 1965),
+            book("s2", "Foundation", "Isaac Asimov", 1951),
+            book("s3", "Neuromancer", "William Gibson", 1984)
+        ));
+
+        var expression = StreamingExpression.search(COLLECTION)
+            .query("*:*")
+            .fields("id", "title_s", "author_s")
+            .sort("id asc")
+            .rows(10)
+            .build();
+
+        var results = template.stream(COLLECTION, expression);
+
+        assertThat(results).hasSize(3);
+        assertThat(results).extracting(m -> m.get("id"))
+            .containsExactly("s1", "s2", "s3");
+      });
+    }
+
+    @Test
+    void streamResultDoesNotContainEofTuple() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("e1", "The Left Hand of Darkness", "Ursula K. Le Guin", 1969),
+            book("e2", "A Wizard of Earthsea", "Ursula K. Le Guin", 1968)
+        ));
+
+        var expression = StreamingExpression.search(COLLECTION)
+            .query("author_s:\"Ursula K. Le Guin\"")
+            .fields("id", "title_s")
+            .sort("id asc")
+            .rows(10)
+            .build();
+
+        var results = template.stream(COLLECTION, expression);
+
+        assertThat(results).noneMatch(m -> m.containsKey("EOF"));
+        assertThat(results).hasSize(2);
+      });
+    }
+
+    @Test
+    void streamResultContainsRequestedFields() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("r1", "Snow Crash", "Neal Stephenson", 1992)
+        ));
+
+        var expression = StreamingExpression.search(COLLECTION)
+            .query("id:r1")
+            .fields("id", "title_s", "author_s", "year_i")
+            .sort("id asc")
+            .rows(1)
+            .build();
+
+        var results = template.stream(COLLECTION, expression);
+
+        assertThat(results).hasSize(1);
+        Map<String, Object> doc = results.getFirst();
+        assertThat(doc).containsKey("id");
+        assertThat(doc).containsKey("title_s");
+        assertThat(doc).containsKey("author_s");
+        assertThat(doc.get("title_s")).isEqualTo("Snow Crash");
+        assertThat(doc.get("author_s")).isEqualTo("Neal Stephenson");
+      });
+    }
+
+    @Test
+    void rawExpressionViaOfReturnsResults() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+        template.saveAll(COLLECTION, List.of(
+            book("w1", "The Dispossessed", "Ursula K. Le Guin", 1974),
+            book("w2", "The Word for World is Forest", "Ursula K. Le Guin", 1972),
+            book("w3", "Contact", "Carl Sagan", 1985)
+        ));
+
+        var rawExpr = "search(" + COLLECTION + ", q=\"*:*\", fl=\"id,title_s\", sort=\"id asc\", rows=10)";
+        var expression = StreamingExpression.of(rawExpr);
+
+        var results = template.stream(COLLECTION, expression);
+
+        assertThat(results).hasSizeGreaterThanOrEqualTo(3);
+        assertThat(results).noneMatch(m -> m.containsKey("EOF"));
+      });
+    }
+
+    @Test
+    void emptyCollectionReturnsEmptyList() {
+      contextRunner.run(ctx -> {
+        var template = ctx.getBean(SolrTemplate.class);
+
+        var expression = StreamingExpression.search(COLLECTION)
+            .query("*:*")
+            .fields("id")
+            .sort("id asc")
+            .rows(10)
+            .build();
+
+        var results = template.stream(COLLECTION, expression);
+
+        assertThat(results).isEmpty();
       });
     }
   }

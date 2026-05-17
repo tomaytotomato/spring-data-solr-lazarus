@@ -759,6 +759,63 @@ JaCoCo line coverage gate passes (≥80%).
 
 ---
 
+## 2026-05-17 — Day 4: Streaming Expressions Integration Tests
+
+### Session 1: Real-Solr Verification of streaming()/stream() (22:00–23:00)
+
+**Branch:** `test/streaming-integration-tests`
+
+Added `@Nested StreamingExpressions` to `AbstractSolrIntegrationTest` — 5 tests that run against
+both Solr 9 and Solr 10 via Testcontainers. In the process, discovered and fixed two bugs in
+`SolrTemplate.stream()` that had been masked by the unit tests using mocked responses.
+
+**Tests added:**
+- `searchExpressionReturnsIndexedDocumentsExcludingEofTuple` — `search()` fluent builder, verifies
+  3 indexed docs come back in sort order
+- `streamResultDoesNotContainEofTuple` — asserts no map contains an `EOF` key
+- `streamResultContainsRequestedFields` — verifies `fl` parameter is respected, field values correct
+- `rawExpressionViaOfReturnsResults` — `StreamingExpression.of(raw)` path, broader assertion
+- `emptyCollectionReturnsEmptyList` — zero-result baseline
+
+**Bugs discovered and fixed:**
+
+1. **`GenericSolrRequest` was routing to `/solr/stream` instead of `/solr/books/stream`**.
+   `GenericSolrRequest.requiresCollection` defaults to `false`. Without `.setRequiresCollection(true)`,
+   `HttpJdkSolrClient.buildRequestUrl()` omits the collection segment and the root-level `/stream`
+   servlet responds with `HTTP 405 POST not supported`. Fix: chain `.setRequiresCollection(true)` on
+   the `GenericSolrRequest` construction.
+
+2. **`parseTuples()` failed silently for JavaBin wire responses**. The unit tests mock
+   `solrClient.request()` to return `NamedList` responses, so `parseTuples()` was written and tested
+   against `NamedList`. In the real JavaBin protocol, the `/stream` handler encodes:
+   - `result-set` value as `MAP_ENTRY_ITER` → `Map<Object,Object>` (NOT `NamedList`)
+   - individual doc tuples also as `MAP_ENTRY_ITER` → `Map<Object,Object>`
+   - the `docs` container as `ITERATOR` → `List<Object>` (this part was handled correctly)
+   Both the `resultSet` and `doc` branches needed `instanceof Map<?,?>` pattern matching alongside
+   the existing `NamedList<?>` branches.
+
+**On `/stream` handler availability:**
+
+The task notes flagged this as a possible blocker. Investigation:
+- Standalone Solr (mode `"std"`) DOES have the `/stream` endpoint registered, but executing any
+  `search()` expression throws `NullPointerException: ZooKeeper host cannot be null!` — streaming
+  expressions require ZooKeeper to resolve collection shards.
+- `SolrContainer` in Testcontainers 2.0.5 defaults `zookeeper = true`, so containers started with
+  `.withCollection(name)` run in embedded-ZK SolrCloud mode. The existing tests already relied on
+  this. The `/stream` handler works out of the box — **no custom config, no mounted schema required**.
+- Confirmed on both `solr:9` and `solr:10` Docker images.
+
+**SolrJ 10 JavaBin format note:**
+The JavaBin `ITERATOR` (tag 14) is used for the docs container, `MAP_ENTRY_ITER` (tag 17) for
+each tuple. Both decode through `JavaBinCodec.readIterator()` → `ArrayList` and `readMapIter()` →
+`LinkedHashMap` respectively. The original `parseTuples()` checked only for `NamedList` — the Map
+branch is the actual wire format.
+
+**Tests:** 419 total (377 unit + 42 integration — 5 new streaming tests × 2 Solr versions = 10 new
+integration tests), 0 failures. JaCoCo coverage gate passes at >80%.
+
+---
+
 ## What's Next
 
 ### Remaining
@@ -768,7 +825,7 @@ JaCoCo line coverage gate passes (≥80%).
 - [x] Converter application during write (SolrDocumentWriter, Day 3 Session 3, PR #9)
 - [x] `@Highlight` and `@Facet` method-level annotations for repository methods (Day 4, feat/highlight-facet-annotations)
 - [x] Geospatial integration tests with Testcontainers (PR #10 — `test/geo-integration-tests`)
-- [ ] Streaming expressions integration tests (requires streaming handler enabled in Solr config)
+- [x] Streaming expressions integration tests (Day 4, `test/streaming-integration-tests` — 5 tests, 10 IT runs)
 
 ---
 

@@ -287,7 +287,8 @@ public class SolrTemplate implements SolrOperations {
       var params = new ModifiableSolrParams();
       params.set("expr", expression.getExpression());
       var request = new GenericSolrRequest(
-          SolrRequest.METHOD.POST, "/stream", SolrRequest.SolrRequestType.STREAMING, params);
+          SolrRequest.METHOD.POST, "/stream", SolrRequest.SolrRequestType.STREAMING, params)
+          .setRequiresCollection(true);
       var response = solrClient.request(request, collection);
       return parseTuples(response);
     } catch (IOException | SolrServerException e) {
@@ -298,23 +299,45 @@ public class SolrTemplate implements SolrOperations {
 
   @SuppressWarnings("unchecked")
   private List<Map<String, Object>> parseTuples(NamedList<Object> response) {
-    var resultSet = response.get("result-set");
-    if (!(resultSet instanceof NamedList<?> resultSetList)) {
+    var resultSetRaw = response.get("result-set");
+
+    // JavaBin wire path: streaming handler encodes result-set as MAP_ENTRY_ITER → Map
+    // Unit-test path: mocked responses use NamedList for result-set
+    Object docsRaw;
+    if (resultSetRaw instanceof NamedList<?> resultSetList) {
+      docsRaw = resultSetList.get("docs");
+    } else if (resultSetRaw instanceof Map<?, ?> resultSetMap) {
+      docsRaw = resultSetMap.get("docs");
+    } else {
       return List.of();
     }
-    var docs = resultSetList.get("docs");
-    if (!(docs instanceof List<?> docList)) {
+
+    if (!(docsRaw instanceof List<?> docList)) {
       return List.of();
     }
+
     var tuples = new ArrayList<Map<String, Object>>();
     for (var doc : docList) {
       if (doc instanceof NamedList<?> tupleList) {
+        // Unit-test path: mocked responses use NamedList tuples
         if (tupleList.get("EOF") != null) {
           continue;
         }
         var map = new HashMap<String, Object>();
         for (var entry : (NamedList<Object>) tupleList) {
           map.put(entry.getKey(), entry.getValue());
+        }
+        tuples.add(map);
+      } else if (doc instanceof Map<?, ?> tupleMap) {
+        // JavaBin wire path: individual tuples decoded as MAP_ENTRY_ITER → LinkedHashMap
+        if (tupleMap.containsKey("EOF")) {
+          continue;
+        }
+        var map = new HashMap<String, Object>();
+        for (var entry : tupleMap.entrySet()) {
+          if (entry.getKey() instanceof String key) {
+            map.put(key, entry.getValue());
+          }
         }
         tuples.add(map);
       }
