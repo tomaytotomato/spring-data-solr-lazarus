@@ -190,7 +190,9 @@ flowchart TD
   SP["SolrProperties<br/>@ConfigurationProperties"]
 
   subgraph Decision["Client Selection (SolrAutoConfiguration)"]
-    Q{"spring.solr<br/>.zk-host set?"}
+    Q{"Both standalone<br/>and cloud set?"}
+    Err["IllegalStateException<br/>(startup failure)"]
+    QC{"spring.solr.cloud<br/>.zk-host set?"}
     Cloud["CloudSolrClient<br/>(ZooKeeper-aware)"]
     Std["HttpJdkSolrClient<br/>(standalone, JDK HttpClient)"]
   end
@@ -200,8 +202,10 @@ flowchart TD
 
   YML --> SP
   SP --> Q
-  Q -- yes --> Cloud
-  Q -- no --> Std
+  Q -- yes --> Err
+  Q -- no --> QC
+  QC -- yes --> Cloud
+  QC -- no --> Std
   Cloud --> Tmpl
   Std --> Tmpl
   SP -- commit-mode --> CM

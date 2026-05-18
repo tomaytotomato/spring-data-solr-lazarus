@@ -120,23 +120,27 @@ Add the starter dependency (once published to Maven Central):
 Configure in `application.yml`:
 
 ```yaml
-# Standalone Solr (default — uses HttpJdkSolrClient, zero extra dependencies)
+# Standalone Solr (uses HttpJdkSolrClient, zero extra dependencies)
 spring:
   solr:
-    host: http://localhost:8983/solr
-    default-collection: myCollection
+    standalone:
+      host: http://localhost:8983/solr
+      default-collection: myCollection
     connection-timeout: 10s
     request-timeout: 60s
     commit-mode: none          # or 'immediate' to hard-commit after each write
 ```
 
 ```yaml
-# SolrCloud — activates automatically when zk-host is present (uses CloudSolrClient)
+# SolrCloud (uses CloudSolrClient with ZooKeeper)
 spring:
   solr:
-    zk-host: zk1:2181,zk2:2181,zk3:2181
-    default-collection: myCollection
+    cloud:
+      zk-host: zk1:2181,zk2:2181,zk3:2181
+      default-collection: myCollection
 ```
+
+Configuring both `standalone` and `cloud` blocks simultaneously is a startup error — the intent must be unambiguous.
 
 If you need full control (custom TLS, `HttpJettySolrClient`, etc.), define your own `SolrClient`
 bean and the auto-configuration backs off entirely.

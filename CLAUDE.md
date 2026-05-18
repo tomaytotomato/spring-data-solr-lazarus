@@ -50,9 +50,10 @@ Three-module Maven project — the classic Spring Boot starter pattern. Package 
 Three `@AutoConfiguration` classes registered in
 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`:
 
-1. **`SolrAutoConfiguration`** — creates `SolrClient` (standalone `HttpJdkSolrClient` by default, or
-   `CloudSolrClient` when `spring.solr.zk-host` is set) and `SolrTemplate`. Properties bound under
-   `spring.solr.*` via `SolrProperties`.
+1. **`SolrAutoConfiguration`** — creates `SolrClient` (`HttpJdkSolrClient` for standalone mode,
+   `CloudSolrClient` for cloud mode) and `SolrTemplate`. Mode is explicit: configure either
+   `spring.solr.standalone.*` or `spring.solr.cloud.*` — both set simultaneously is a startup error.
+   Properties bound under `spring.solr.*` via `SolrProperties`.
 2. **`SolrHealthAutoConfiguration`** (after #1) — registers `SolrHealthIndicator` when Actuator is
    on the classpath. Pings the configured collection, or falls back to admin system info endpoint.
 3. **`SolrRepositoryAutoConfiguration`** (after #1) — enables Spring Data repository scanning via
@@ -142,14 +143,17 @@ include the uniqueKey field. Execute with `SolrTemplate.queryWithCursor()`.
 All properties under `spring.solr.*` (see `SolrProperties` and
 `additional-spring-configuration-metadata.json`):
 
-| Property                       | Default                          | Notes                                          |
-|--------------------------------|----------------------------------|-------------------------------------------------|
-| `spring.solr.host`             | `http://localhost:8983/solr`     | Must end with `/solr` for Solr 10+             |
-| `spring.solr.default-collection` | —                              | Used for health checks and as client default   |
-| `spring.solr.zk-host`          | —                                | When set, creates `CloudSolrClient` instead    |
-| `spring.solr.connection-timeout` | `10s`                          | Accepts Duration (e.g. `5s`, `PT10S`)          |
-| `spring.solr.request-timeout`  | `60s`                            | Accepts Duration                               |
-| `spring.solr.commit-mode`      | `NONE`                           | `NONE` or `IMMEDIATE` — controls auto-commit   |
+| Property                                 | Default                      | Notes                                          |
+|------------------------------------------|------------------------------|------------------------------------------------|
+| `spring.solr.standalone.host`            | `http://localhost:8983/solr` | Must end with `/solr` for Solr 10+             |
+| `spring.solr.standalone.default-collection` | —                         | Used for health checks and as client default   |
+| `spring.solr.cloud.zk-host`             | —                            | ZooKeeper connection string for SolrCloud mode |
+| `spring.solr.cloud.default-collection`  | —                            | Used for health checks and as client default   |
+| `spring.solr.connection-timeout`        | `10s`                        | Accepts Duration (e.g. `5s`, `PT10S`)          |
+| `spring.solr.request-timeout`           | `60s`                        | Accepts Duration                               |
+| `spring.solr.commit-mode`               | `NONE`                       | `NONE` or `IMMEDIATE` — controls auto-commit   |
+
+Setting both `standalone` and `cloud` blocks is a startup error.
 
 ## Running the Sample App
 

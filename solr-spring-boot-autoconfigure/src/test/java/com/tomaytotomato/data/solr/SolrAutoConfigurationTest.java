@@ -66,20 +66,22 @@ class SolrAutoConfigurationTest {
     @Test
     void customHostPropertyIsReflectedInProperties() {
       contextRunner
-          .withPropertyValues("spring.solr.host=http://custom-solr:8983/solr")
+          .withPropertyValues("spring.solr.standalone.host=http://custom-solr:8983/solr")
           .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getHost()).isEqualTo("http://custom-solr:8983/solr");
+            var standalone = ctx.getBean(SolrProperties.class).getStandalone();
+            assertThat(standalone).isNotNull();
+            assertThat(standalone.host()).isEqualTo("http://custom-solr:8983/solr");
           });
     }
 
     @Test
     void customCollectionPropertyIsReflectedInProperties() {
       contextRunner
-          .withPropertyValues("spring.solr.default-collection=products")
+          .withPropertyValues("spring.solr.standalone.default-collection=products")
           .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getDefaultCollection()).isEqualTo("products");
+            var standalone = ctx.getBean(SolrProperties.class).getStandalone();
+            assertThat(standalone).isNotNull();
+            assertThat(standalone.defaultCollection()).isEqualTo("products");
           });
     }
   }
@@ -187,22 +189,28 @@ class SolrAutoConfigurationTest {
   }
 
   @Nested
-  class CloudSolrClientConditionalConfiguration {
+  class ClientModeSelection {
 
     @Test
-    void usesStandardClientWhenZkHostIsNotSet() {
+    void usesStandaloneClientByDefault() {
       contextRunner.run(ctx -> {
         assertThat(ctx).hasSingleBean(SolrClient.class);
-        assertThat(ctx.getBean(SolrClient.class))
-            .isNotInstanceOf(CloudSolrClient.class);
+        assertThat(ctx.getBean(SolrClient.class)).isNotInstanceOf(CloudSolrClient.class);
       });
     }
 
     @Test
-    void userProvidedClientTakesPrecedenceEvenWhenZkHostIsSet() {
+    void attemptsCloudClientCreationWhenCloudZkHostIsSet() {
+      contextRunner
+          .withPropertyValues("spring.solr.cloud.zk-host=localhost:2181")
+          .run(ctx -> assertThat(ctx).hasFailed());
+    }
+
+    @Test
+    void userProvidedClientTakesPrecedenceEvenWhenCloudIsConfigured() {
       var userClient = mock(SolrClient.class);
       contextRunner
-          .withPropertyValues("spring.solr.zk-host=localhost:2181")
+          .withPropertyValues("spring.solr.cloud.zk-host=localhost:2181")
           .withBean("customSolrClient", SolrClient.class, () -> userClient)
           .run(ctx -> {
             assertThat(ctx).hasSingleBean(SolrClient.class);
@@ -211,10 +219,17 @@ class SolrAutoConfigurationTest {
     }
 
     @Test
-    void attemptsCloudClientCreationWhenZkHostIsSet() {
+    void failsWithIllegalStateWhenBothStandaloneAndCloudAreConfigured() {
       contextRunner
-          .withPropertyValues("spring.solr.zk-host=localhost:2181")
-          .run(ctx -> assertThat(ctx).hasFailed());
+          .withPropertyValues(
+              "spring.solr.standalone.host=http://localhost:8983/solr",
+              "spring.solr.cloud.zk-host=localhost:2181")
+          .run(ctx -> {
+            assertThat(ctx).hasFailed();
+            assertThat(ctx.getStartupFailure())
+                .hasMessageContaining("spring.solr.standalone")
+                .hasMessageContaining("spring.solr.cloud");
+          });
     }
   }
 

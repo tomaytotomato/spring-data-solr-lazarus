@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,25 +21,6 @@ import org.springframework.core.env.Environment;
 @ConditionalOnClass(SolrClient.class)
 @EnableConfigurationProperties(SolrProperties.class)
 public class SolrAutoConfiguration {
-
-  @Configuration(proxyBeanMethods = false)
-  @ConditionalOnProperty(prefix = "spring.solr", name = "zk-host")
-  static class CloudSolrClientConfiguration {
-
-    @Bean
-    @ConditionalOnMissingBean(SolrClient.class)
-    SolrClient cloudSolrClient(SolrProperties properties) {
-      var internalClientBuilder = new HttpJdkSolrClient.Builder()
-          .withConnectionTimeout(
-              properties.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
-          .withRequestTimeout(
-              properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS);
-      return new CloudSolrClient.Builder(List.of(properties.getZkHost()))
-          .withDefaultCollection(properties.getDefaultCollection())
-          .withHttpClientBuilder(internalClientBuilder)
-          .build();
-    }
-  }
 
   @Configuration(proxyBeanMethods = false)
   @ConditionalOnClass(MeterRegistry.class)
@@ -58,12 +38,35 @@ public class SolrAutoConfiguration {
   @Bean
   @ConditionalOnMissingBean(SolrClient.class)
   public SolrClient solrClient(SolrProperties properties) {
-    return new HttpJdkSolrClient.Builder(properties.getHost())
-        .withConnectionTimeout(
-            properties.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
-        .withRequestTimeout(
-            properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS)
-        .withDefaultCollection(properties.getDefaultCollection())
+    if (properties.getCloud() != null && properties.getStandalone() != null) {
+      throw new IllegalStateException(
+          "Ambiguous Solr configuration: both 'spring.solr.standalone' and 'spring.solr.cloud' are set. Remove one.");
+    }
+    if (properties.getCloud() != null) {
+      return buildCloudClient(properties);
+    }
+    return buildStandaloneClient(properties);
+  }
+
+  private SolrClient buildCloudClient(SolrProperties properties) {
+    var cloud = properties.getCloud();
+    var httpClientBuilder = new HttpJdkSolrClient.Builder()
+        .withConnectionTimeout(properties.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
+        .withRequestTimeout(properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS);
+    return new CloudSolrClient.Builder(List.of(cloud.zkHost()))
+        .withDefaultCollection(cloud.defaultCollection())
+        .withHttpClientBuilder(httpClientBuilder)
+        .build();
+  }
+
+  private SolrClient buildStandaloneClient(SolrProperties properties) {
+    var standalone = properties.getStandalone();
+    var host = standalone != null ? standalone.host() : "http://localhost:8983/solr";
+    var collection = standalone != null ? standalone.defaultCollection() : null;
+    return new HttpJdkSolrClient.Builder(host)
+        .withConnectionTimeout(properties.getConnectionTimeout().toMillis(), TimeUnit.MILLISECONDS)
+        .withRequestTimeout(properties.getRequestTimeout().toMillis(), TimeUnit.MILLISECONDS)
+        .withDefaultCollection(collection)
         .build();
   }
 

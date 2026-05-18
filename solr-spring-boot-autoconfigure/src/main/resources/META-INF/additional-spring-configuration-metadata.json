@@ -1,20 +1,37 @@
 {
+  "groups": [
+    {
+      "name": "spring.solr.standalone",
+      "type": "com.tomaytotomato.data.solr.SolrProperties$StandaloneProperties",
+      "sourceType": "com.tomaytotomato.data.solr.SolrProperties"
+    },
+    {
+      "name": "spring.solr.cloud",
+      "type": "com.tomaytotomato.data.solr.SolrProperties$CloudProperties",
+      "sourceType": "com.tomaytotomato.data.solr.SolrProperties"
+    }
+  ],
   "properties": [
     {
-      "name": "spring.solr.host",
+      "name": "spring.solr.standalone.host",
       "type": "java.lang.String",
-      "description": "Solr server URL. Must end with /solr for Solr 10+.",
+      "description": "Solr server URL for standalone mode. Must end with /solr for Solr 10+.",
       "defaultValue": "http://localhost:8983/solr"
     },
     {
-      "name": "spring.solr.default-collection",
+      "name": "spring.solr.standalone.default-collection",
       "type": "java.lang.String",
-      "description": "Default Solr collection name. Used for health checks and as the default collection for SolrClient."
+      "description": "Default Solr collection name for standalone mode. Used for health checks and as the SolrClient default."
     },
     {
-      "name": "spring.solr.zk-host",
+      "name": "spring.solr.cloud.zk-host",
       "type": "java.lang.String",
-      "description": "ZooKeeper connection string for SolrCloud mode. When set, a CloudSolrClient is created instead of HttpJdkSolrClient."
+      "description": "ZooKeeper connection string for SolrCloud mode (e.g. localhost:2181). When set, a CloudSolrClient is created."
+    },
+    {
+      "name": "spring.solr.cloud.default-collection",
+      "type": "java.lang.String",
+      "description": "Default Solr collection name for SolrCloud mode. Used for health checks and as the CloudSolrClient default."
     },
     {
       "name": "spring.solr.connection-timeout",

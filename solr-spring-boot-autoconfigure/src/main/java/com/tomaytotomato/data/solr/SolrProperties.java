@@ -7,38 +7,31 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "spring.solr")
 public class SolrProperties {
 
-  private final String host;
-  private final String defaultCollection;
-  private final String zkHost;
+  private final StandaloneProperties standalone;
+  private final CloudProperties cloud;
   private final Duration connectionTimeout;
   private final Duration requestTimeout;
   private final CommitMode commitMode;
 
   public SolrProperties(
-      @DefaultValue("http://localhost:8983/solr") String host,
-      String defaultCollection,
-      String zkHost,
+      StandaloneProperties standalone,
+      CloudProperties cloud,
       @DefaultValue("10s") Duration connectionTimeout,
       @DefaultValue("60s") Duration requestTimeout,
       @DefaultValue("NONE") CommitMode commitMode) {
-    this.host = host;
-    this.defaultCollection = defaultCollection;
-    this.zkHost = zkHost;
+    this.standalone = standalone;
+    this.cloud = cloud;
     this.connectionTimeout = connectionTimeout;
     this.requestTimeout = requestTimeout;
     this.commitMode = commitMode;
   }
 
-  public String getHost() {
-    return host;
+  public StandaloneProperties getStandalone() {
+    return standalone;
   }
 
-  public String getDefaultCollection() {
-    return defaultCollection;
-  }
-
-  public String getZkHost() {
-    return zkHost;
+  public CloudProperties getCloud() {
+    return cloud;
   }
 
   public Duration getConnectionTimeout() {
@@ -52,4 +45,22 @@ public class SolrProperties {
   public CommitMode getCommitMode() {
     return commitMode;
   }
+
+  public String getDefaultCollection() {
+    if (cloud != null) {
+      return cloud.defaultCollection();
+    }
+    if (standalone != null) {
+      return standalone.defaultCollection();
+    }
+    return null;
+  }
+
+  public record StandaloneProperties(
+      @DefaultValue("http://localhost:8983/solr") String host,
+      String defaultCollection) {}
+
+  public record CloudProperties(
+      String zkHost,
+      String defaultCollection) {}
 }

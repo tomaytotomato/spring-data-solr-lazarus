@@ -7,8 +7,9 @@ spring:
       readiness:
         wait: always
   solr:
-    host: http://localhost:8983/solr
-    default-collection: books
+    standalone:
+      host: http://localhost:8983/solr
+      default-collection: books
     commit-mode: immediate
 
 management:
