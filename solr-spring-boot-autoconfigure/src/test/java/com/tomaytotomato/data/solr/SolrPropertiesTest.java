@@ -1,12 +1,14 @@
 package com.tomaytotomato.data.solr;
 
 import java.time.Duration;
+import org.apache.solr.client.solrj.SolrClient;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class SolrPropertiesTest {
 
@@ -17,87 +19,153 @@ class SolrPropertiesTest {
   class Defaults {
 
     @Test
-    void hostDefaultsToLocalhost() {
-      contextRunner.run(ctx -> {
-        var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getHost()).isEqualTo("http://localhost:8983/solr");
-      });
+    void standaloneIsNullWhenNoStandalonePropertiesSet() {
+      contextRunner.run(ctx ->
+          assertThat(ctx.getBean(SolrProperties.class).getStandalone()).isNull());
+    }
+
+    @Test
+    void cloudIsNullByDefault() {
+      contextRunner.run(ctx ->
+          assertThat(ctx.getBean(SolrProperties.class).getCloud()).isNull());
     }
 
     @Test
     void connectionTimeoutDefaultsToTenSeconds() {
-      contextRunner.run(ctx -> {
-        var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getConnectionTimeout()).isEqualTo(Duration.ofSeconds(10));
-      });
+      contextRunner.run(ctx ->
+          assertThat(ctx.getBean(SolrProperties.class).getConnectionTimeout())
+              .isEqualTo(Duration.ofSeconds(10)));
     }
 
     @Test
     void requestTimeoutDefaultsToSixtySeconds() {
-      contextRunner.run(ctx -> {
-        var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getRequestTimeout()).isEqualTo(Duration.ofSeconds(60));
-      });
+      contextRunner.run(ctx ->
+          assertThat(ctx.getBean(SolrProperties.class).getRequestTimeout())
+              .isEqualTo(Duration.ofSeconds(60)));
     }
 
     @Test
-    void defaultCollectionIsNull() {
-      contextRunner.run(ctx -> {
-        var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getDefaultCollection()).isNull();
-      });
-    }
-
-    @Test
-    void zkHostIsNull() {
-      contextRunner.run(ctx -> {
-        var properties = ctx.getBean(SolrProperties.class);
-        assertThat(properties.getZkHost()).isNull();
-      });
+    void defaultCollectionIsNullWhenNoModeConfigured() {
+      contextRunner.run(ctx ->
+          assertThat(ctx.getBean(SolrProperties.class).getDefaultCollection()).isNull());
     }
   }
 
   @Nested
-  class CustomBinding {
+  class StandaloneBinding {
 
     @Test
     void customHostBindsFromProperty() {
       contextRunner
-          .withPropertyValues("spring.solr.host=http://solr.example.com:8983/solr")
+          .withPropertyValues("spring.solr.standalone.host=http://solr.example.com:8983/solr")
           .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getHost()).isEqualTo("http://solr.example.com:8983/solr");
+            var standalone = ctx.getBean(SolrProperties.class).getStandalone();
+            assertThat(standalone).isNotNull();
+            assertThat(standalone.host()).isEqualTo("http://solr.example.com:8983/solr");
           });
     }
 
     @Test
-    void customDefaultCollectionBindsFromProperty() {
+    void defaultCollectionBindsFromProperty() {
       contextRunner
-          .withPropertyValues("spring.solr.default-collection=my-collection")
+          .withPropertyValues("spring.solr.standalone.default-collection=my-collection")
           .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getDefaultCollection()).isEqualTo("my-collection");
+            var standalone = ctx.getBean(SolrProperties.class).getStandalone();
+            assertThat(standalone).isNotNull();
+            assertThat(standalone.defaultCollection()).isEqualTo("my-collection");
           });
     }
 
     @Test
-    void durationStyleConnectionTimeoutBindsFromProperty() {
+    void hostDefaultsWhenOnlyCollectionIsSet() {
+      contextRunner
+          .withPropertyValues("spring.solr.standalone.default-collection=books")
+          .run(ctx -> {
+            var standalone = ctx.getBean(SolrProperties.class).getStandalone();
+            assertThat(standalone).isNotNull();
+            assertThat(standalone.host()).isEqualTo("http://localhost:8983/solr");
+          });
+    }
+
+    @Test
+    void defaultCollectionIsExposedByTopLevelGetter() {
+      contextRunner
+          .withPropertyValues("spring.solr.standalone.default-collection=products")
+          .run(ctx ->
+              assertThat(ctx.getBean(SolrProperties.class).getDefaultCollection())
+                  .isEqualTo("products"));
+    }
+  }
+
+  @Nested
+  class CloudBinding {
+
+    private final ApplicationContextRunner cloudContextRunner = contextRunner
+        .withBean("solrClient", SolrClient.class, () -> mock(SolrClient.class));
+
+    @Test
+    void zkHostBindsFromProperty() {
+      cloudContextRunner
+          .withPropertyValues("spring.solr.cloud.zk-host=localhost:2181")
+          .run(ctx -> {
+            var cloud = ctx.getBean(SolrProperties.class).getCloud();
+            assertThat(cloud).isNotNull();
+            assertThat(cloud.zkHost()).isEqualTo("localhost:2181");
+          });
+    }
+
+    @Test
+    void cloudDefaultCollectionBindsFromProperty() {
+      cloudContextRunner
+          .withPropertyValues(
+              "spring.solr.cloud.zk-host=localhost:2181",
+              "spring.solr.cloud.default-collection=catalog")
+          .run(ctx -> {
+            var cloud = ctx.getBean(SolrProperties.class).getCloud();
+            assertThat(cloud).isNotNull();
+            assertThat(cloud.defaultCollection()).isEqualTo("catalog");
+          });
+    }
+
+    @Test
+    void cloudDefaultCollectionIsExposedByTopLevelGetter() {
+      cloudContextRunner
+          .withPropertyValues(
+              "spring.solr.cloud.zk-host=localhost:2181",
+              "spring.solr.cloud.default-collection=catalog")
+          .run(ctx ->
+              assertThat(ctx.getBean(SolrProperties.class).getDefaultCollection())
+                  .isEqualTo("catalog"));
+    }
+
+    @Test
+    void cloudDefaultCollectionTakesPrecedenceOverStandaloneInTopLevelGetter() {
+      var cloud = new SolrProperties.CloudProperties("localhost:2181", "cloud-col");
+      var standalone = new SolrProperties.StandaloneProperties("http://localhost:8983/solr", "standalone-col");
+      var properties = new SolrProperties(standalone, cloud, Duration.ofSeconds(10), Duration.ofSeconds(60), CommitMode.NONE);
+      assertThat(properties.getDefaultCollection()).isEqualTo("cloud-col");
+    }
+  }
+
+  @Nested
+  class SharedProperties {
+
+    @Test
+    void connectionTimeoutBindsFromProperty() {
       contextRunner
           .withPropertyValues("spring.solr.connection-timeout=5s")
-          .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getConnectionTimeout()).isEqualTo(Duration.ofSeconds(5));
-          });
+          .run(ctx ->
+              assertThat(ctx.getBean(SolrProperties.class).getConnectionTimeout())
+                  .isEqualTo(Duration.ofSeconds(5)));
     }
 
     @Test
-    void durationStyleRequestTimeoutBindsFromProperty() {
+    void requestTimeoutBindsFromProperty() {
       contextRunner
           .withPropertyValues("spring.solr.request-timeout=30s")
-          .run(ctx -> {
-            var properties = ctx.getBean(SolrProperties.class);
-            assertThat(properties.getRequestTimeout()).isEqualTo(Duration.ofSeconds(30));
-          });
+          .run(ctx ->
+              assertThat(ctx.getBean(SolrProperties.class).getRequestTimeout())
+                  .isEqualTo(Duration.ofSeconds(30)));
     }
   }
 }
