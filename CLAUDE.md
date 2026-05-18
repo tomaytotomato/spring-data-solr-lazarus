@@ -166,6 +166,13 @@ The sample module uses Spring Boot Docker Compose support. With Docker running:
 This auto-starts a Solr 10 container with a pre-created `books` collection. The app exposes book
 CRUD endpoints and Actuator health at `/actuator/health`.
 
+## Contributing and Issues
+
+Any bugs found, improvements spotted, or features worth adding should be logged as a GitHub issue
+at https://github.com/tomaytotomato/spring-data-solr-lazarus/issues before any code is written.
+Use the issue templates — bug reports and feature requests are both covered. See `CONTRIBUTING.md`
+for the full workflow including branch naming and PR checklist.
+
 ## Claude Code Configuration
 
 The `.claude/` directory contains project-level configuration:
