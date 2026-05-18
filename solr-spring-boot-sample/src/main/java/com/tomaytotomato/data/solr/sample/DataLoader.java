@@ -32,7 +32,8 @@ public class DataLoader implements CommandLineRunner {
         resource.getInputStream(), new TypeReference<List<JsonBook>>() {});
 
     var books = jsonBooks.stream().map(this::toBook).toList();
-    books.forEach(bookRepository::save);
+
+    bookRepository.saveAll(books);
 
     log.info("Loaded {} curated books into Solr", books.size());
   }

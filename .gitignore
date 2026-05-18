@@ -23,3 +23,7 @@ Thumbs.db
 # Misc
 *.log
 PLAN.md
+
+# Claude Code specific
+.claude/worktrees
+.claude/settings.local.json

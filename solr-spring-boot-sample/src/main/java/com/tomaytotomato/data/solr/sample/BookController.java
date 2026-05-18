@@ -42,8 +42,6 @@ public class BookController {
     this.solrTemplate = solrTemplate;
   }
 
-  // --- CRUD ---
-
   @GetMapping
   public Iterable<Book> findAll() {
     return bookRepository.findAll();
@@ -66,8 +64,6 @@ public class BookController {
     bookRepository.deleteById(id);
     return ResponseEntity.noContent().build();
   }
-
-  // --- Derived Queries ---
 
   @GetMapping("/search")
   public List<Book> search(@RequestParam String q) {
@@ -115,8 +111,6 @@ public class BookController {
     return bookRepository.findByPriceLessThan(maxPrice);
   }
 
-  // --- @Query Annotation ---
-
   @GetMapping("/custom-search")
   public List<Book> customSearch(@RequestParam String title, @RequestParam String author) {
     return bookRepository.findByTitleAndAuthorCustom(title, author);
@@ -133,8 +127,6 @@ public class BookController {
     return Map.of("category", category, "count", bookRepository.countByCategoryCustom(category));
   }
 
-  // --- Highlighting ---
-
   @GetMapping("/highlight")
   public HighlightPage<Book> searchWithHighlights(@RequestParam String q) {
     var query = new SimpleQuery(Criteria.where("description_t").contains(q));
@@ -148,8 +140,6 @@ public class BookController {
         .fragsize(200));
     return solrTemplate.queryForHighlightPage(COLLECTION, query, Book.class);
   }
-
-  // --- Faceting ---
 
   @GetMapping("/facets")
   public FacetPage<Book> searchWithFacets(
@@ -167,8 +157,6 @@ public class BookController {
     return solrTemplate.queryForFacetPage(COLLECTION, query, Book.class);
   }
 
-  // --- Cursor-based Deep Paging ---
-
   @GetMapping("/cursor")
   public CursorResult<Book> cursorPage(
       @RequestParam(defaultValue = "*") String cursorMark,
@@ -178,8 +166,6 @@ public class BookController {
     query.setPageable(PageRequest.of(0, pageSize, Sort.by("id").ascending()));
     return solrTemplate.queryWithCursor(COLLECTION, query, Book.class);
   }
-
-  // --- Geospatial ---
 
   @GetMapping("/nearby")
   public List<Book> findNearby(
@@ -205,8 +191,6 @@ public class BookController {
     return solrTemplate.queryForPage(COLLECTION, query, Book.class).getContent();
   }
 
-  // --- Partial Updates ---
-
   @PatchMapping("/{id}/price")
   public ResponseEntity<Void> updatePrice(@PathVariable String id,
       @RequestParam double price) {
@@ -222,8 +206,6 @@ public class BookController {
     solrTemplate.savePartialUpdate(COLLECTION, update);
     return ResponseEntity.noContent().build();
   }
-
-  // --- Statistics ---
 
   @GetMapping("/stats")
   public Map<String, Object> stats() {
