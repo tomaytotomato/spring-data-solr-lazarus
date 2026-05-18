@@ -140,7 +140,7 @@ spring:
       default-collection: myCollection
 ```
 
-Configuring both `standalone` and `cloud` blocks simultaneously is a startup error — the intent must be unambiguous.
+Configuring both `standalone` and `cloud` will cause a startup error.
 
 If you need full control (custom TLS, `HttpJettySolrClient`, etc.), define your own `SolrClient`
 bean and the auto-configuration backs off entirely.
